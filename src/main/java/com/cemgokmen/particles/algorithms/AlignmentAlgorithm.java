@@ -147,14 +147,21 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
     public double getRotateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
         List<Particle> neighbors = p.getNeighborParticles(false, null);
 
-        int sumDotProducts = 0;
-        int newSumDotProducts = 0;
-        for (Particle nbr : neighbors) {
-            sumDotProducts += normalizeDotProduct(Math.cos(p.compass.getAngleBetweenDirections(p.getDirection(), ((DirectedAmoebotParticle) nbr).getDirection())));
-            newSumDotProducts += normalizeDotProduct(Math.cos(p.compass.getAngleBetweenDirections(inDirection, ((DirectedAmoebotParticle) nbr).getDirection())));
-        }
+        double sumDotProducts = getDotProductSum(neighbors, p.getDirection());
+        double newSumDotProducts = getDotProductSum(neighbors, inDirection);
 
         return Math.pow(this.getRotationBias(), newSumDotProducts - sumDotProducts);
+    }
+
+    private static double getDotProductSum(List<Particle> particles, ParticleGrid.Direction withDirection) {
+        double sumDotProducts = 0;
+
+        for (Particle nbrAnonymous : particles) {
+            DirectedAmoebotParticle nbr = (DirectedAmoebotParticle) nbrAnonymous;
+            sumDotProducts += normalizeDotProduct(Math.cos(nbr.compass.getAngleBetweenDirections(withDirection, nbr.getDirection())));
+        }
+
+        return sumDotProducts;
     }
 
     public double getTranslateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
@@ -168,21 +175,8 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
         double translationBiasTerm = Math.pow(this.getTranslationBias(),
                 futureNeighbors.size() - currentNeighbors.size());
 
-        double runningRotationBiasExponent = 0;
-
-        for (Particle nbr : futureNeighbors) {
-            ParticleGrid.Direction nbrDirection = ((DirectedAmoebotParticle) nbr).getDirection();
-            double dotProduct = Math.cos(compass.getAngleBetweenDirections(particleDirection, nbrDirection));
-            runningRotationBiasExponent += normalizeDotProduct(dotProduct);
-        }
-
-        for (Particle nbr : currentNeighbors) {
-            ParticleGrid.Direction nbrDirection = ((DirectedAmoebotParticle) nbr).getDirection();
-            double dotProduct = Math.cos(compass.getAngleBetweenDirections(particleDirection, nbrDirection));
-            runningRotationBiasExponent -= normalizeDotProduct(dotProduct);
-        }
-
-        double rotationBiasTerm = Math.pow(this.getRotationBias(), runningRotationBiasExponent);
+        double rotationBiasExponent = getDotProductSum(futureNeighbors, p.getDirection()) - getDotProductSum(currentNeighbors, p.getDirection());
+        double rotationBiasTerm = Math.pow(this.getRotationBias(), rotationBiasExponent);
 
         return translationBiasTerm * rotationBiasTerm;
     }
