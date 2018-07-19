@@ -40,18 +40,20 @@ public class CompressedSeparationTrialRunner {
 
         // Run 10 million iterations of lambda = 10 compression first
         System.out.println("Running compression");
-        while (true) {
+        /*while (true) {
             grid.assignAllParticlesAlgorithm(new CompressionAlgorithm(10.0));
             grid.runActivations(1000000);
             GridGraphics.saveGridImage(grid, basePath.resolve(grid.getActivationsRun() + ".png").toFile());
         }
-        /*System.out.println("Compression run successfully.");
+        System.out.println("Compression run successfully.");*/
 
         // Run 10 million iterations of alpha = 10 separation
         System.out.println("Running separation");
-        grid.assignAllParticlesAlgorithm(new SeparationAlgorithm(1.0, 10.0, true, false));
-        grid.runActivations(1000000);
-        GridGraphics.saveGridImage(grid, basePath.resolve(grid.getActivationsRun() + ".png").toFile());
-        System.out.println("Separation run successfully.");*/
+        while (true) {
+            grid.assignAllParticlesAlgorithm(new SeparationAlgorithm(1.0, 10.0, true, false));
+            grid.runActivations(1000000);
+            GridGraphics.saveGridImage(grid, basePath.resolve(grid.getActivationsRun() + ".png").toFile());
+        }
+        //System.out.println("Separation run successfully.");
     }
 }

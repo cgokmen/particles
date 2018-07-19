@@ -28,6 +28,7 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 
+import java.util.Comparator;
 import java.util.Map;
 
 public class ForagingAlgorithm extends CompressionAlgorithm {
@@ -188,12 +189,11 @@ public class ForagingAlgorithm extends CompressionAlgorithm {
     public Map<String, String> getInformation(ParticleGrid g) {
         Map<String, String> info = super.getInformation(g);
 
-        int longestWaiting = 0;
-        for (Particle p : g.getAllParticles()) {
-            if (p instanceof ForagingAmoebotParticle) {
-                longestWaiting = Math.max(longestWaiting, ((ForagingAmoebotParticle) p).getLongestLastFedActivationsAgo());
-            }
-        }
+        int longestWaiting = g.getAllParticles()
+                .filter(p -> p instanceof ForagingAmoebotParticle)
+                .map(p -> ((ForagingAmoebotParticle) p).getLongestLastFedActivationsAgo())
+                .max(Comparator.comparing(Integer::valueOf))
+                .get();
 
         info.put("Longest un-fed wait so far", longestWaiting + "");
         return info;

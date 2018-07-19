@@ -163,10 +163,9 @@ public class ToroidalAmoebotGrid extends QuadrilateralAmoebotGrid {
 
     @Override
     public Vector getCenterOfMass() {
-        List<Particle> particles = this.getAllParticles();
-        return particles.stream()
+        return this.getAllParticles()
                 .map(this::getLeveledParticlePosition)
                 .reduce(Vector.zero(2), Vector::add)
-                .divide(particles.size());
+                .divide(this.getParticleCount());
     }
 }

@@ -134,13 +134,13 @@ public class GridGraphics {
 
     public static void drawGridInfoOntoGraphics(ParticleGrid grid, Graphics2D graphics, double size) {
         Map<String, String> info = new LinkedHashMap<>(grid.getGridInformation());
-        for (ParticleAlgorithm algorithm: grid.getRunningAlgorithms()) {
+        grid.getRunningAlgorithms().forEach(algorithm -> {
             try {
                 info.putAll(PropertyUtils.getPropertyValues(algorithm, ParticleAlgorithm.class));
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        }
+        });
 
         graphics.setPaint(Color.BLACK);
         graphics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, (int) (size / 50.0)));
@@ -250,7 +250,7 @@ public class GridGraphics {
 
         Set<Particle> drawnParticles = new HashSet<>();
 
-        for (Particle p : grid.getAllParticles()) {
+        grid.getAllParticles().forEach(p -> {
             Vector position = grid.getUnitPixelCoordinates(grid.getParticlePosition(p)).multiply(EDGE_LENGTH);
 
             for (Particle nbr : grid.getParticleNeighbors(p, false)) {
@@ -263,14 +263,14 @@ public class GridGraphics {
             }
 
             drawnParticles.add(p);
-        }
+        });
     }
 
     private static void drawParticles(Graphics2D graphics, ParticleGrid grid) {
-        for (Particle p : grid.getAllParticles()) {
+        grid.getAllParticles().forEach(p -> {
             Vector position = grid.getUnitPixelCoordinates(grid.getParticlePosition(p)).multiply(EDGE_LENGTH);
             p.drawParticle(graphics, position, EDGE_LENGTH);
-        }
+        });
     }
 
     private static void drawCenterOfMass(Graphics2D graphics, ParticleGrid grid) {

@@ -25,6 +25,7 @@ import com.google.common.collect.Lists;
 import org.la4j.Vector;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 public class BiMapParticleStorage implements ParticleStorage {
     private final BiMap<Vector, Particle> map;
@@ -34,8 +35,8 @@ public class BiMapParticleStorage implements ParticleStorage {
     }
 
     @Override
-    public List<Particle> getAllParticles() {
-        return Lists.newArrayList(this.map.values());
+    public Stream<Particle> getAllParticles() {
+        return this.map.values().stream();
     }
 
     @Override

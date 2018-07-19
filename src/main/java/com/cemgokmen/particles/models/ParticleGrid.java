@@ -20,6 +20,7 @@ package com.cemgokmen.particles.models;
 
 import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
 import com.cemgokmen.particles.storage.ParticleStorage;
+import com.cemgokmen.particles.util.RandomSelector;
 import com.cemgokmen.particles.util.Utils;
 import com.google.common.collect.ImmutableList;
 import org.la4j.Vector;
@@ -27,6 +28,8 @@ import org.la4j.Vector;
 import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class ParticleGrid {
     private int activationsRun = 0;
@@ -128,15 +131,21 @@ public abstract class ParticleGrid {
         return Arrays.asList(this.getAdjacentPositions(p1)).contains(p2);
     }
 
-    public List<Particle> getAllParticles() {
+    public int getParticleCount() {
+        return this.getStorage().getParticleCount();
+    }
+
+    public int getParticleCount(@Nonnull Predicate<Particle> filter) {
+        return (int) this.getAllParticles(filter).count();
+    }
+
+    public Stream<Particle> getAllParticles() {
         return this.getStorage().getAllParticles();
     }
 
-    public List<Particle> getAllParticles(@Nonnull Predicate<Particle> filter) {
-        List<Particle> particles = this.getAllParticles();
-        particles.removeIf(filter);
-
-        return particles;
+    public Stream<Particle> getAllParticles(@Nonnull Predicate<Particle> filter) {
+        Stream<Particle> particles = this.getAllParticles();
+        return particles.filter(filter);
     }
 
     public List<Particle> getParticleNeighbors(Particle p, boolean includeNulls) {
@@ -195,46 +204,44 @@ public abstract class ParticleGrid {
     }
 
     public void assignAllParticlesAlgorithm(ParticleAlgorithm algorithm) {
-        for (Particle p : this.getAllParticles()) {
+        this.getAllParticles().forEach(p -> {
             p.setAlgorithm(algorithm);
-        }
+        });
     }
 
     public void runActivations(int numActivations) {
         // We make the assumption that no particles will be added.
-        for (int i = 0; i < numActivations; i++) {
-            List<Particle> particleList = this.getAllParticles();
+        List<Particle> particleList = this.getAllParticles().collect(Collectors.toCollection(ArrayList::new));
+        RandomSelector<Particle> selector = RandomSelector.uniform(particleList);
 
-            Particle p = particleList.get(Utils.randomInt(particleList.size()));
-            //System.out.println("Now activating " + p);
+        for (int i = 0; i < numActivations; i++) {
+            Particle p = null;
+
+            while (p == null) {
+                p = selector.next(Utils.random);
+                if (!this.isParticleOnGrid(p)) p = null;
+            }
+
             p.activate();
-            //System.out.println("Activated " + p);
             this.activationsRun++;
         }
     }
 
     public abstract List<Class<? extends ParticleAlgorithm>> getCompatibleAlgorithms();
 
-    public List<ParticleAlgorithm> getRunningAlgorithms() {
+    public Stream<ParticleAlgorithm> getRunningAlgorithms() {
         Set<ParticleAlgorithm> runningAlgorithms = new HashSet<>();
 
-        for (Particle p : this.getAllParticles()) {
-            ParticleAlgorithm algorithm = p.getAlgorithm();
-            if (algorithm != null) {
-                runningAlgorithms.add(algorithm);
-            }
-        }
-        return new ArrayList<>(runningAlgorithms);
+        return this.getAllParticles().map(Particle::getAlgorithm).filter(Objects::nonNull).distinct();
     }
 
     public abstract Vector getUnitPixelCoordinates(Vector in);
 
     public Vector getCenterOfMass() {
-        List<Particle> particles = this.getAllParticles();
-        return particles.stream()
+        return this.getAllParticles()
                 .map(this::getParticlePosition)
                 .reduce(Vector.zero(2), Vector::add)
-                .divide(particles.size());
+                .divide(this.getParticleCount());
     }
 
     public int getActivationsRun() {
@@ -244,7 +251,7 @@ public abstract class ParticleGrid {
     public Map<String, String> getGridInformation() {
         LinkedHashMap<String, String> map = new LinkedHashMap<>();
 
-        map.put("Particle count", this.getAllParticles().size() + "");
+        map.put("Particle count", this.getParticleCount() + "");
         map.put("Activations run", this.activationsRun + "");
         map.put("Center of mass", this.getCenterOfMass().toString());
 

@@ -28,6 +28,7 @@ import org.la4j.Vector;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class TableParticleStorage implements ParticleStorage {
     /**
@@ -77,8 +78,8 @@ public class TableParticleStorage implements ParticleStorage {
     }
 
     @Override
-    public List<Particle> getAllParticles() {
-        return Lists.newArrayList(this.particlePositions.keySet());
+    public Stream<Particle> getAllParticles() {
+        return this.particlePositions.keySet().stream();
     }
 
     @Override

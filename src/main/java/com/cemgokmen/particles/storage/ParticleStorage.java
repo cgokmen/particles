@@ -21,10 +21,10 @@ package com.cemgokmen.particles.storage;
 import com.cemgokmen.particles.models.Particle;
 import org.la4j.Vector;
 
-import java.util.List;
+import java.util.stream.Stream;
 
 public interface ParticleStorage {
-    List<Particle> getAllParticles();
+    Stream<Particle> getAllParticles();
 
     int getParticleCount();
 
