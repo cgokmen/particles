@@ -19,8 +19,10 @@
 package com.cemgokmen.particles.runners;
 
 import com.cemgokmen.particles.algorithms.ForagingAlgorithm;
+import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
 import com.cemgokmen.particles.io.GridIO;
-import com.cemgokmen.particles.io.HTMLGenerator;
+import com.cemgokmen.particles.io.SampleSystemMetadata;
+import com.cemgokmen.particles.io.html.HTMLGenerator;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -34,7 +36,7 @@ import java.util.function.Supplier;
 
 public class ForagingTrialRunner {
     public static void main(String[] args) throws Exception {
-        GridIO.ClassFilenameTuple system = GridIO.SAMPLE_SYSTEMS.get(GridIO.SampleSystems.AMOEBOT_100_1FOOD);
+        SampleSystemMetadata system = SampleSystemMetadata.AMOEBOT_100_1FOOD;
 
         /*
         PropertyName options for ForagingAlgorithm
@@ -62,17 +64,19 @@ public class ForagingTrialRunner {
 
         Supplier<ParticleGrid> gridSupplier = () -> {
             try {
-                return GridIO.importParticlesFromResourceName(system.filename, system.klass);
+                return GridIO.importSampleSystem(system);
             } catch (Exception e) {
                 throw new RuntimeException(e.getMessage());
             }
         };
 
+        Supplier<ParticleAlgorithm> algorithmSupplier = ForagingAlgorithm::new;
+
         for (Map.Entry<String, List<Number>> entry : propertyValues.entrySet()) {
             final String propertyName = entry.getKey();
             final Path propertyPath = basePath.resolve(propertyName);
 
-            final Table<Number, Number, File> images = TrialUtils.runPropertyValueTrials(gridSupplier, ForagingAlgorithm.class, propertyName, entry.getValue(), stopArray, propertyPath, "png");
+            final Table<Number, Number, File> images = TrialUtils.runPropertyValueTrials(gridSupplier, algorithmSupplier, propertyName, entry.getValue(), stopArray, propertyPath, "png");
 
             File htmlFile = propertyPath.resolve("index.html").toFile();
             HTMLGenerator.saveHTML(htmlFile, "Foraging", propertyName, "Activations", images);

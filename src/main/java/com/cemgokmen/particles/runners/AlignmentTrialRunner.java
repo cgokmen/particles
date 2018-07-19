@@ -20,61 +20,67 @@ package com.cemgokmen.particles.runners;
 
 import com.cemgokmen.particles.algorithms.AlignmentAlgorithm;
 import com.cemgokmen.particles.algorithms.ForagingAlgorithm;
+import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
 import com.cemgokmen.particles.io.GridIO;
-import com.cemgokmen.particles.io.HTMLGenerator;
+import com.cemgokmen.particles.io.SampleSystemMetadata;
+import com.cemgokmen.particles.io.html.HTMLGenerator;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Table;
-import com.google.common.primitives.Ints;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 public class AlignmentTrialRunner {
     public static void main(String[] args) throws Exception {
-        GridIO.ClassFilenameTuple system = GridIO.SAMPLE_SYSTEMS.get(GridIO.SampleSystems.AMOEBOT_100_6DIRECTION_LARGE);
+        SampleSystemMetadata system = SampleSystemMetadata.AMOEBOT_100_6DIRECTION_LARGE;
 
-        Path basePath = Paths.get("/Users/cgokmen/research/results/alignmenttests/");
+        /*
+        PropertyName options for AlignmentAlgorithm
+
+        protected final DoubleProperty rotationBias = new SimpleDoubleProperty();
+        protected final DoubleProperty translationBias = new SimpleDoubleProperty();
+        protected final DoubleProperty forwardBias = new SimpleDoubleProperty();
+        */
+        Path basePath = Paths.get("/Users/cgokmen/research/results/newalignmenttests/");
+
+        ImmutableMap<String, List<Number>> propertyValues = new ImmutableMap.Builder<String, List<Number>>()
+                .put("rotationBias", new ImmutableList.Builder<Number>().add(1.0, 5.0, 10.0, 20.0, 50.0).build())
+                //.put("forwardBias", new ImmutableList.Builder<Number>().add(1.0, 1.1, 2.0, 5.0, 10.0).build())
+                .build();
 
         // We want images at 0, 1000, 10000, 100000, 1000000, 10000000 iterations
-        int[] stopArray = new int[]{0, 20000, 40000, 60000, 80000, 100000};
+        int[] stopArray = new int[]{0, 1000, 10000, 100000, 1000000, 10000000};
 
         Supplier<ParticleGrid> gridSupplier = () -> {
             try {
-                return GridIO.importParticlesFromResourceName(system.filename, system.klass);
+                return GridIO.importSampleSystem(system);
             } catch (Exception e) {
                 throw new RuntimeException(e.getMessage());
             }
         };
 
-        // Prepare the algorithm
-        AlignmentAlgorithm algorithm = new AlignmentAlgorithm();
-        algorithm.setForwardBias(1.0);
+        Supplier<ParticleAlgorithm> algorithmSupplier = new Supplier<ParticleAlgorithm>() {
+            @Override
+            public ParticleAlgorithm get() {
+                return new AlignmentAlgorithm(20, 4, 1);
+            }
+        };
 
-        // Prepare the grid
-        ParticleGrid grid = gridSupplier.get();
-        grid.assignAllParticlesAlgorithm(algorithm);
+        for (Map.Entry<String, List<Number>> entry : propertyValues.entrySet()) {
+            final String propertyName = entry.getKey();
+            final Path propertyPath = basePath.resolve(propertyName);
 
-        // Run without drift
-        Table<Number, Number, File> images = HashBasedTable.create();
-        Map<Number, File> beforeDrift = TrialUtils.runTrials(grid, stopArray, basePath, "nodrift.png");
-        beforeDrift.forEach((x, image) -> images.put(0, x, image));
+            final Table<Number, Number, File> images = TrialUtils.runPropertyValueTrials(gridSupplier, algorithmSupplier, propertyName, entry.getValue(), stopArray, propertyPath, "png");
 
-        /*algorithm.setForwardBias(1.1);
-
-        int[] newStopArray = Ints.toArray(Ints.asList(stopArray).stream().map(i -> i + grid.getActivationsRun()).collect(Collectors.toList()));
-        Map<Number, File> afterDrift = TrialUtils.runTrials(grid, newStopArray, basePath, "drift.png");
-        afterDrift.forEach((x, image) -> images.put(0, x, image));*/
-
-        File htmlFile = basePath.resolve("index.html").toFile();
-        HTMLGenerator.saveHTML(htmlFile, "Alignment", "N/A", "Activations", images);
+            File htmlFile = propertyPath.resolve("index.html").toFile();
+            HTMLGenerator.saveHTML(htmlFile, "Alignment", propertyName, "Activations", images);
+        }
     }
 }

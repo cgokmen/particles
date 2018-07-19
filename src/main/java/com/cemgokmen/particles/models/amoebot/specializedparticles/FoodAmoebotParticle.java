@@ -16,9 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.models.amoebot.specializedparticles;
 
 import com.cemgokmen.particles.models.ParticleGrid;
+import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
+import com.cemgokmen.particles.models.amoebot.InvalidMoveException;
 
 import java.awt.*;
 
@@ -32,7 +34,9 @@ public class FoodAmoebotParticle extends AmoebotParticle {
 
         if (this.activationLifetime <= 0) {
             System.out.println("Food expired");
-            this.grid.removeParticle(this);
+            try {
+                this.grid.removeParticle(this);
+            } catch (Exception ignored) {}
         }
     }
 

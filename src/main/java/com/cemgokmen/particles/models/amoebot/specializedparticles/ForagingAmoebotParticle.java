@@ -16,8 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.models.amoebot.specializedparticles;
 
+import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
 import org.la4j.Vector;
 
 import java.awt.*;

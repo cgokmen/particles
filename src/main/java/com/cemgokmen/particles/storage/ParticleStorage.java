@@ -16,14 +16,27 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.io;
+package com.cemgokmen.particles.storage;
 
-public class InvalidParticleClassException extends Exception {
-    public InvalidParticleClassException() {
-        super("No class passed");
-    }
+import com.cemgokmen.particles.models.Particle;
+import org.la4j.Vector;
 
-    public InvalidParticleClassException(Class<?> klass) {
-        super(klass.getName());
-    }
+import java.util.List;
+
+public interface ParticleStorage {
+    List<Particle> getAllParticles();
+
+    int getParticleCount();
+
+    Vector getParticlePosition(Particle p);
+
+    Particle getParticleAtPosition(Vector v);
+
+    boolean containsParticle(Particle p);
+
+    boolean isPositionOccupied(Vector v);
+
+    void addParticle(Particle p, Vector v);
+
+    void removeParticle(Particle p);
 }

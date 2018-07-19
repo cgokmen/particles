@@ -18,16 +18,12 @@
 
 package com.cemgokmen.particles.algorithms;
 
-import com.cemgokmen.particles.misc.RNG;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
+import com.cemgokmen.particles.util.Utils;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Predicate;
 
 public class CompressionAlgorithm extends ParticleAlgorithm {
     public static final double DEFAULT_LAMBDA = 4.0;
@@ -83,7 +79,7 @@ public class CompressionAlgorithm extends ParticleAlgorithm {
 
         //System.out.printf("Move probability: %.2f%%. Now filtering.", moveProbability * 100);
 
-        if (RNG.randomDouble() > moveProbability) {
+        if (Utils.randomDouble() > moveProbability) {
             return;
         }
 
@@ -111,6 +107,11 @@ public class CompressionAlgorithm extends ParticleAlgorithm {
         return p instanceof AmoebotParticle;
     }
 
+    @Override
+    public boolean isGridValid(ParticleGrid grid) {
+        return RuleUtils.checkParticleConnection(grid, particle -> true) && RuleUtils.checkParticleHoles(grid, particle -> true);
+    }
+
     public double getMoveProbability(AmoebotParticle p, ParticleGrid.Direction inDirection) {
         int currentNeighbors = p.getNeighborParticles(false, null).size();
         int futureNeighbors = p.getAdjacentPositionNeighborParticles(inDirection, false, particle -> particle
@@ -128,63 +129,10 @@ public class CompressionAlgorithm extends ParticleAlgorithm {
         }
 
         boolean cond1 = p.getNeighborParticles(false, null).size() < 5;
-        boolean cond2 = this.checkMoveProperty1(p, d, null);
-        boolean cond3 = this.checkMoveProperty2(p, d, null);
+        boolean cond2 = RuleUtils.checkProperty1(p, d, null);
+        boolean cond3 = RuleUtils.checkProperty2(p, d, null);
 
         return cond1 && (cond2 || cond3);
     }
 
-    protected boolean checkMoveProperty1(AmoebotParticle p, ParticleGrid.Direction d, Predicate<Particle> filter) {
-        Particle n1 = p.getNeighborInDirection(d, 5, filter); // WE SHOULD NOT HAVE ACCESS TO THESE!
-        Particle n2 = p.getNeighborInDirection(d, 1, filter);
-
-        if (n1 != null || n2 != null) {
-            List<Boolean> neighbors1 = new ArrayList<>(6);
-            List<Boolean> neighbors2 = new ArrayList<>(6);
-
-            for (int i = 0; i < 5; i++) {
-                neighbors1.add(p.getNeighborInDirection(d, i + 1, filter) != null);
-                neighbors2.add(p.getAdjacentPositionNeighborInDirection(d, i + 4, filter) != null);
-            }
-
-            int changes1 = 0;
-            int changes2 = 0;
-
-            for (int n = 0; n < 4; n++) {
-                if (neighbors1.get(n) != neighbors1.get(n + 1)) {
-                    changes1++;
-                }
-                if (neighbors2.get(n) != neighbors2.get(n + 1)) {
-                    changes2++;
-                }
-            }
-
-            return changes1 < 3 && changes2 < 3;
-        }
-
-        return false;
-    }
-
-    protected boolean checkMoveProperty2(AmoebotParticle p, ParticleGrid.Direction d, Predicate<Particle> filter) {
-        Particle s1 = p.getNeighborInDirection(d, 5, filter);
-        Particle s2 = p.getNeighborInDirection(d, 1, filter);
-
-        if (s1 == null && s2 == null) {
-            if (p.getAdjacentPositionNeighborParticles(d, false, filter).size() <= 1) {
-                return false;
-            }
-
-            if (p.getNeighborInDirection(d, 2, filter) != null &&
-                    p.getNeighborInDirection(d, 3, filter) == null &&
-                    p.getNeighborInDirection(d, 4, filter) != null) {
-                return false;
-            }
-
-            return p.getAdjacentPositionNeighborInDirection(d, 1, filter) == null ||
-                    p.getAdjacentPositionNeighborInDirection(d, 0, filter) != null ||
-                    p.getAdjacentPositionNeighborInDirection(d, 5, filter) == null;
-        }
-
-        return false;
-    }
 }

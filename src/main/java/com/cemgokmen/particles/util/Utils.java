@@ -16,13 +16,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.misc;
+package com.cemgokmen.particles.util;
 
 import org.la4j.Vector;
 
 import java.lang.reflect.Constructor;
+import java.util.Random;
 
 public class Utils {
+    public static final Random random = new Random();
+
     public static Vector getVector(int x, int y) {
         return Vector.fromArray(new double[]{x, y});
     }
@@ -40,5 +43,13 @@ public class Utils {
         } catch (NoSuchMethodException e) {
             return null;
         }
+    }
+
+    public static double randomDouble() {
+        return random.nextDouble();
+    }
+
+    public static int randomInt(int bound) {
+        return random.nextInt(bound);
     }
 }

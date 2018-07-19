@@ -22,9 +22,9 @@ import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
 import com.cemgokmen.particles.graphics.GridGraphics;
 import com.cemgokmen.particles.graphics.MultipagePDFHandler;
 import com.cemgokmen.particles.io.GridIO;
-import com.cemgokmen.particles.io.InvalidParticleClassException;
-import com.cemgokmen.particles.misc.PropertyUtils;
-import com.cemgokmen.particles.misc.Utils;
+import com.cemgokmen.particles.io.SampleSystemMetadata;
+import com.cemgokmen.particles.util.PropertyUtils;
+import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import javafx.collections.FXCollections;
@@ -44,7 +44,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
-import javafx.util.converter.DoubleStringConverter;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -289,7 +288,7 @@ public class ParticlesViewController {
     private void updateAlgorithms() {
         this.algorithmComboBox.getItems().clear();
 
-        for (Class<? extends ParticleAlgorithm> algorithmClass : this.grid.getAlgorithms()) {
+        for (Class<? extends ParticleAlgorithm> algorithmClass : this.grid.getCompatibleAlgorithms()) {
             this.algorithmComboBox.getItems().add(algorithmClass);
         }
     }
@@ -348,6 +347,19 @@ public class ParticlesViewController {
     }
 
     private void loadSystem(InputStream in) {
+        ChoiceDialog<Class<? extends ParticleGrid>> dialog = new ChoiceDialog<>(null, new ArrayList<>(GridIO.ALLOWED_GRID_TYPES));
+
+        dialog.setTitle("Grid Type");
+        dialog.setHeaderText("Choose a type for the Grid in the file");
+        dialog.setContentText("Choose your type:");
+
+        Optional<Class<? extends ParticleGrid>> result = dialog.showAndWait();
+        Class<? extends ParticleGrid> gridClass = result.orElse(null);
+
+        this.loadSystem(in, gridClass);
+    }
+
+    private void loadSystem(InputStream in, Class<? extends ParticleGrid> gridClass) {
         ChoiceDialog<Class<? extends Particle>> dialog = new ChoiceDialog<>(null, new ArrayList<>(GridIO.ALLOWED_PARTICLE_TYPES));
 
         dialog.setTitle("Particle Type");
@@ -357,30 +369,39 @@ public class ParticlesViewController {
         Optional<Class<? extends Particle>> result = dialog.showAndWait();
         Class<? extends Particle> particleClass = result.orElse(null);
 
-        this.loadSystem(in, particleClass);
+        this.loadSystem(in, gridClass, particleClass);
     }
 
-    private void loadSystem(InputStream in, Class<? extends Particle> particleClass) {
+    private void loadSystem(InputStream in, Class<? extends ParticleGrid> gridClass, Class<? extends Particle> particleClass) {
         try {
-            if (particleClass == null) {
-                throw new InvalidParticleClassException();
-            }
-
-            this.grid = GridIO.importParticlesFromInputStream(in, particleClass);
+            this.grid = GridIO.importParticlesFromInputStream(in, gridClass, particleClass);
             this.gridLoaded();
-        } catch (InvalidParticleClassException e) {
+        } catch (GridIO.InvalidParticleClassException e) {
             this.dialog(Alert.AlertType.ERROR, "Error", "Invalid particle type", "The particle type you chose was invalid.");
+        } catch (GridIO.InvalidGridClassException e) {
+            this.dialog(Alert.AlertType.ERROR, "Error", "Invalid grid type", "The grid type you chose was invalid.");
+        }
+    }
+
+    private void loadSampleSystem(SampleSystemMetadata system) {
+        try {
+            this.grid = GridIO.importSampleSystem(system);
+            this.gridLoaded();
+        } catch (GridIO.InvalidParticleClassException e) {
+            this.dialog(Alert.AlertType.ERROR, "Error", "Invalid particle type", "The particle type was invalid.");
+        } catch (GridIO.InvalidGridClassException e) {
+            this.dialog(Alert.AlertType.ERROR, "Error", "Invalid grid type", "The grid type was invalid.");
+        } catch (IOException e) {
+            this.dialog(Alert.AlertType.ERROR, "Error", "Could not load system", "There was an error accessing the sample system.");
         }
     }
 
     public void initialize() {
         Map<String, Menu> menus = new LinkedHashMap<>();
 
-        for (Map.Entry<GridIO.SampleSystems, GridIO.ClassFilenameTuple<Particle>> entry : GridIO.SAMPLE_SYSTEMS.entrySet()) {
-            String path = entry.getKey().toString();
-            final String filename = entry.getValue().filename;
-            final Class<? extends Particle> particleClass = entry.getValue().klass;
-            String[] sections = path.split("/", 2);
+        for (SampleSystemMetadata system: SampleSystemMetadata.values()) {
+            String path = system.humanReadableName;
+            String[] sections = path.split("/", 2); // TODO: FIX THIS
 
             if (!menus.containsKey(sections[0])) {
                 menus.put(sections[0], new Menu(sections[0]));
@@ -390,13 +411,7 @@ public class ParticlesViewController {
             item.setOnAction(new EventHandler<ActionEvent>() {
                 @Override
                 public void handle(ActionEvent event) {
-                    try {
-                        InputStream in = this.getClass().getClassLoader().getResourceAsStream(filename);
-                        ParticlesViewController.this.loadSystem(in, particleClass);
-                        in.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    ParticlesViewController.this.loadSampleSystem(system);
                 }
             });
 

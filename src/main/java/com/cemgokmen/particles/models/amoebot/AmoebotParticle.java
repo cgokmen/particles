@@ -18,10 +18,10 @@
 
 package com.cemgokmen.particles.models.amoebot;
 
-import com.cemgokmen.particles.misc.RNG;
-import com.cemgokmen.particles.misc.Utils;
+import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
+import com.google.common.collect.ImmutableList;
 import org.la4j.Vector;
 
 import java.awt.*;
@@ -31,6 +31,7 @@ import java.util.function.Predicate;
 
 public class AmoebotParticle extends Particle {
     // The capabilities of the model are implemented here.
+    public final ImmutableList<Class<? extends ParticleGrid>> COMPATIBLE_GRIDS = new ImmutableList.Builder<Class<? extends ParticleGrid>>().add(AmoebotGrid.class).build();
 
     public List<Particle> getNeighborParticles(boolean includeNulls, Predicate<Particle> filter) {
         if (filter == null) {
@@ -40,7 +41,8 @@ public class AmoebotParticle extends Particle {
     }
 
     public List<Particle> getAdjacentPositionNeighborParticles(ParticleGrid.Direction d, boolean includeNulls, Predicate<Particle> filter) {
-        Vector adjacentPosition = this.grid.getParticlePosition(this).add(d.getVector());
+        Vector thisPosition = this.grid.getParticlePosition(this);
+        Vector adjacentPosition = this.grid.getPositionInDirection(thisPosition, d);
         if (filter == null) {
             return this.grid.getPositionNeighbors(adjacentPosition, includeNulls);
         }
@@ -57,7 +59,8 @@ public class AmoebotParticle extends Particle {
     }
 
     public Particle getAdjacentPositionNeighborInDirection(ParticleGrid.Direction d, int counterclockwiseShift, Predicate<Particle> filter) {
-        Vector adjacentPosition = this.grid.getParticlePosition(this).add(d.getVector());
+        Vector thisPosition = this.grid.getParticlePosition(this);
+        Vector adjacentPosition = this.grid.getPositionInDirection(thisPosition, d);
 
         if (counterclockwiseShift != 0) {
             d = this.grid.getCompass().shiftDirectionCounterclockwise(d, counterclockwiseShift);
@@ -69,10 +72,10 @@ public class AmoebotParticle extends Particle {
 
     public ParticleGrid.Direction getRandomDirection() {
         List<ParticleGrid.Direction> directions = this.grid.getCompass().getDirections();
-        return directions.get(RNG.randomInt(directions.size()));
+        return directions.get(Utils.randomInt(directions.size()));
     }
 
-    public void move(ParticleGrid.Direction inDirection, boolean swapsAllowed, boolean nonSwapsAllowed) throws InvalidMoveException {
+    public void move(ParticleGrid.Direction inDirection, boolean swapsAllowed, boolean nonSwapsAllowed) throws Exception {
         Vector current = this.grid.getParticlePosition(this);
         Vector target = this.grid.getPositionInDirection(current, inDirection);
 

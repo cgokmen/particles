@@ -16,13 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.models.amoebot.specializedparticles;
 
 import com.cemgokmen.particles.models.ParticleGrid;
+import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
+import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
+import com.cemgokmen.particles.models.amoebot.InvalidMoveException;
+import com.cemgokmen.particles.models.amoebot.gridshapes.ToroidalAmoebotGrid;
 import org.la4j.Vector;
 
 import java.awt.*;
+import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
+import java.util.Arrays;
 
 public class DirectedAmoebotParticle extends AmoebotParticle {
     private ParticleGrid.Direction direction;
@@ -45,32 +51,32 @@ public class DirectedAmoebotParticle extends AmoebotParticle {
 
     @Override
     public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength) {
-        super.drawParticle(graphics, screenPosition, edgeLength);
+        //super.drawParticle(graphics, screenPosition, edgeLength);
 
         // Calculate the arrow
-        Vector towardsArrowTip = this.grid.getUnitPixelCoordinates(this.direction.getVector().multiply(CIRCLE_RADIUS / 2));
-        Vector towardsArrowLeft = this.grid.getUnitPixelCoordinates(this.compass.shiftDirectionCounterclockwise(this.direction, 2).getVector().multiply(
-                CIRCLE_RADIUS / 2));
-        Vector towardsArrowRight = this.grid.getUnitPixelCoordinates(this.compass.shiftDirectionCounterclockwise(this.direction, 4).getVector().multiply(
-                CIRCLE_RADIUS / 2));
+        Vector towardsArrowTip = this.grid.getUnitPixelCoordinates(this.direction.getVector());
+        towardsArrowTip = towardsArrowTip.multiply(CIRCLE_RADIUS / towardsArrowTip.norm());
+
+        Vector towardsArrowLeft = Vector.fromArray(new double[]{towardsArrowTip.get(1), -towardsArrowTip.get(0)});
+        Vector towardsArrowRight = towardsArrowLeft.multiply(-1);
+        Vector towardsArrowBase = towardsArrowTip.multiply(-1);
 
         Vector arrowLeft = screenPosition.add(towardsArrowLeft);
         Vector arrowTip = screenPosition.add(towardsArrowTip);
         Vector arrowRight = screenPosition.add(towardsArrowRight);
-        Vector arrowBackTip = screenPosition.add(towardsArrowTip.multiply(0.5));
+        Vector arrowBase = screenPosition.add(towardsArrowBase);
 
         // Now make the polygon
-        Path2D.Double polygon = new Path2D.Double.Double();
-        polygon.moveTo(arrowLeft.get(0), arrowLeft.get(1));
-        polygon.lineTo(arrowTip.get(0), arrowTip.get(1));
-        polygon.lineTo(arrowRight.get(0), arrowRight.get(1));
-        polygon.lineTo(arrowBackTip.get(0), arrowBackTip.get(1));
-        polygon.closePath();
+        Line2D.Double[] lines = new Line2D.Double[]{
+            new Line2D.Double(arrowBase.get(0), arrowBase.get(1), arrowTip.get(0), arrowTip.get(1)),
+            new Line2D.Double(arrowLeft.get(0), arrowLeft.get(1), arrowTip.get(0), arrowTip.get(1)),
+            new Line2D.Double(arrowRight.get(0), arrowRight.get(1), arrowTip.get(0), arrowTip.get(1)),
+        };
 
         graphics.setColor(Color.RED);
-        graphics.fill(polygon);
+        Arrays.stream(lines).forEach(graphics::draw);
 
         //graphics.setColor(Color.BLACK);
-        //graphics.drawString(this.direction.toString() + "", (int) screenPosition.get(0), (int) screenPosition.get(1));
+        //graphics.drawString(((ToroidalAmoebotGrid) this.grid).getParticleLevel(this).toString(), (int) screenPosition.get(0), (int) screenPosition.get(1));
     }
 }

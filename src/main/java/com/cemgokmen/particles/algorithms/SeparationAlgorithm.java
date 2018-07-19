@@ -21,7 +21,7 @@ package com.cemgokmen.particles.algorithms;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
-import com.cemgokmen.particles.models.amoebot.SeparableAmoebotParticle;
+import com.cemgokmen.particles.models.amoebot.specializedparticles.SeparableAmoebotParticle;
 import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleBooleanProperty;
@@ -33,7 +33,7 @@ public class SeparationAlgorithm extends CompressionAlgorithm {
     public static final double DEFAULT_LAMBDA = 4.0;
     public static final double DEFAULT_ALPHA = 4.0;
     public static final boolean DEFAULT_SWAPS = true;
-    public static final boolean DEFAULT_NONSWAPS = true;
+    public static final boolean DEFAULT_NONSWAPS = false;
 
     protected final DoubleProperty alpha = new SimpleDoubleProperty();
     protected final BooleanProperty swapsAllowed = new SimpleBooleanProperty();

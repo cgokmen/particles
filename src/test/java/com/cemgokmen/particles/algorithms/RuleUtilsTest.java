@@ -20,18 +20,28 @@ package com.cemgokmen.particles.algorithms;
 
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
+import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
+import com.cemgokmen.particles.models.amoebot.gridshapes.QuadrilateralAmoebotGrid;
+import com.cemgokmen.particles.util.Utils;
+import org.junit.Before;
+import org.junit.Test;
 
-import java.util.HashMap;
-import java.util.Map;
+import static org.junit.Assert.assertTrue;
 
-public abstract class ParticleAlgorithm {
-    public abstract void onParticleActivation(Particle p);
+public class RuleUtilsTest {
+    private ParticleGrid grid;
 
-    public abstract boolean isParticleAllowed(Particle p);
+    @Before
+    public void setUp() throws Exception {
+        grid = new QuadrilateralAmoebotGrid(5);
 
-    public abstract boolean isGridValid(ParticleGrid grid);
+        grid.addParticle(new AmoebotParticle(), Utils.getVector(0, 0));
+        grid.addParticle(new AmoebotParticle(), Utils.getVector(0, 1));
+        grid.addParticle(new AmoebotParticle(), Utils.getVector(0, 2));
+    }
 
-    public Map<String, String> getInformation(ParticleGrid g) {
-        return new HashMap<>();
+    @Test
+    public void checkParticleConnection() {
+        assertTrue(RuleUtils.checkParticleConnection(grid, particle -> true));
     }
 }

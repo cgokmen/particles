@@ -16,13 +16,12 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.misc;
+package com.cemgokmen.particles.util;
 
 import javafx.beans.binding.Bindings;
 import javafx.beans.property.*;
 import javafx.util.StringConverter;
 import javafx.util.converter.BooleanStringConverter;
-import javafx.util.converter.DoubleStringConverter;
 import javafx.util.converter.NumberStringConverter;
 
 import java.lang.reflect.Method;
@@ -98,6 +97,11 @@ public class PropertyUtils {
             } else {
                 throw new RuntimeException("Unsupported property type.");
             }
+
+            // Some debug code to monitor property edits through the wrappers
+            property.addListener((observable, oldValue, newValue) -> {
+                System.out.printf("%s changed to %s from previous value %s\n", this.name.get(), oldValue, newValue);
+            });
         }
 
         public Property dataProperty() {

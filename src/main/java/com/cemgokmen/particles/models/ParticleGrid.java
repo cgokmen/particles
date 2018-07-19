@@ -19,9 +19,8 @@
 package com.cemgokmen.particles.models;
 
 import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
-import com.cemgokmen.particles.misc.RNG;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
+import com.cemgokmen.particles.storage.ParticleStorage;
+import com.cemgokmen.particles.util.Utils;
 import com.google.common.collect.ImmutableList;
 import org.la4j.Vector;
 
@@ -30,13 +29,7 @@ import java.util.*;
 import java.util.function.Predicate;
 
 public abstract class ParticleGrid {
-    private final BiMap<Vector, Particle> particles;
-    private int activationsRun;
-
-    public ParticleGrid() {
-        this.particles = HashBiMap.create();
-        this.activationsRun = 0;
-    }
+    private int activationsRun = 0;
 
     public static class Direction {
         private final Vector vector;
@@ -63,6 +56,8 @@ public abstract class ParticleGrid {
         abstract public double getAngleBetweenDirections(Direction a, Direction b);
     }
 
+    abstract protected ParticleStorage getStorage();
+
     abstract public Compass getCompass();
 
     abstract public boolean isPositionValid(Vector p);
@@ -71,31 +66,31 @@ public abstract class ParticleGrid {
 
     abstract public List<Vector> getValidPositions();
 
-    abstract public List<Vector> getExtremities();
+    abstract public List<Vector> getBoundaryVertices();
 
     public boolean isParticleOnGrid(Particle p) {
-        return this.particles.inverse().containsKey(p);
+        return this.getStorage().containsParticle(p);
     }
 
-    public void addParticle(Particle p, Vector position) {
+    public void addParticle(Particle p, Vector position) throws Exception {
         if (this.isPositionOccupied(position)) {
-            throw new RuntimeException("Invalid add - there already is a particle at position " + position);
+            throw new Exception("Invalid add - there already is a particle at position " + position);
         }
-        this.particles.put(position, p);
+        this.getStorage().addParticle(p, position);
         p.setGrid(this);
     }
 
-    public void removeParticle(Particle p) {
-        if (!this.particles.inverse().containsKey(p)) {
-            throw new RuntimeException("Invalid remove - the provided particle is not on the grid.");
+    public void removeParticle(Particle p) throws Exception {
+        if (!this.isParticleOnGrid(p)) {
+            throw new Exception("Invalid remove - the provided particle is not on the grid.");
         }
-        this.particles.inverse().remove(p);
+        this.getStorage().removeParticle(p);
         p.setGrid(null);
     }
 
-    public void moveParticle(Particle p, Vector v) {
+    public void moveParticle(Particle p, Vector v) throws Exception {
         if (this.isPositionOccupied(v)) {
-            throw new RuntimeException("Cannot move to occupied position " + v);
+            throw new Exception("Cannot move to occupied position " + v);
         }
 
         this.removeParticle(p);
@@ -103,15 +98,15 @@ public abstract class ParticleGrid {
     }
 
     public Particle getParticleAtPosition(Vector position) {
-        return this.particles.get(position);
+        return this.getStorage().getParticleAtPosition(position);
     }
 
     public Vector getParticlePosition(Particle p) {
-        return this.particles.inverse().get(p);
+        return this.getStorage().getParticlePosition(p);
     }
 
     public boolean isPositionOccupied(Vector position) {
-        return this.particles.containsKey(position);
+        return this.getStorage().isPositionOccupied(position);
     }
 
     // Position arithmetic
@@ -123,25 +118,18 @@ public abstract class ParticleGrid {
         List<Direction> validDirections = this.getCompass().getDirections();
         Vector[] adjacentPositions = new Vector[validDirections.size()];
         for (int i = 0; i < validDirections.size(); i++) {
-            adjacentPositions[i] = p.add(validDirections.get(i).getVector());
+            adjacentPositions[i] = this.getPositionInDirection(p, validDirections.get(i));
         }
 
         return adjacentPositions;
     }
 
     public boolean arePositionsAdjacent(Vector p1, Vector p2) {
-        Vector diff = p1.subtract(p2);
-        for (Direction d : this.getCompass().getDirections()) {
-            if (d.getVector().equals(diff) || d.getVector().equals(diff.multiply(-1))) {
-                return true;
-            }
-        }
-
-        return false;
+        return Arrays.asList(this.getAdjacentPositions(p1)).contains(p2);
     }
 
     public List<Particle> getAllParticles() {
-        return new ArrayList<>(this.particles.values());
+        return this.getStorage().getAllParticles();
     }
 
     public List<Particle> getAllParticles(@Nonnull Predicate<Particle> filter) {
@@ -215,9 +203,9 @@ public abstract class ParticleGrid {
     public void runActivations(int numActivations) {
         // We make the assumption that no particles will be added.
         for (int i = 0; i < numActivations; i++) {
-            ArrayList<Particle> particleList = new ArrayList<>(this.particles.values());
+            List<Particle> particleList = this.getAllParticles();
 
-            Particle p = particleList.get(RNG.randomInt(particleList.size()));
+            Particle p = particleList.get(Utils.randomInt(particleList.size()));
             //System.out.println("Now activating " + p);
             p.activate();
             //System.out.println("Activated " + p);
@@ -225,7 +213,7 @@ public abstract class ParticleGrid {
         }
     }
 
-    public abstract List<Class<? extends ParticleAlgorithm>> getAlgorithms();
+    public abstract List<Class<? extends ParticleAlgorithm>> getCompatibleAlgorithms();
 
     public List<ParticleAlgorithm> getRunningAlgorithms() {
         Set<ParticleAlgorithm> runningAlgorithms = new HashSet<>();
@@ -241,6 +229,14 @@ public abstract class ParticleGrid {
 
     public abstract Vector getUnitPixelCoordinates(Vector in);
 
+    public Vector getCenterOfMass() {
+        List<Particle> particles = this.getAllParticles();
+        return particles.stream()
+                .map(this::getParticlePosition)
+                .reduce(Vector.zero(2), Vector::add)
+                .divide(particles.size());
+    }
+
     public int getActivationsRun() {
         return this.activationsRun;
     }
@@ -250,6 +246,7 @@ public abstract class ParticleGrid {
 
         map.put("Particle count", this.getAllParticles().size() + "");
         map.put("Activations run", this.activationsRun + "");
+        map.put("Center of mass", this.getCenterOfMass().toString());
 
         this.getRunningAlgorithms().forEach(algorithm -> map.putAll(algorithm.getInformation(this)));
 

@@ -18,26 +18,21 @@
 
 package com.cemgokmen.particles.algorithms;
 
-import com.cemgokmen.particles.misc.RNG;
-import com.cemgokmen.particles.misc.RandomSelector;
+import com.cemgokmen.particles.util.RandomSelector;
+import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
-import com.cemgokmen.particles.models.amoebot.DirectedAmoebotParticle;
+import com.cemgokmen.particles.models.amoebot.specializedparticles.DirectedAmoebotParticle;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class AlignmentAlgorithm extends CompressionAlgorithm {
-    public static final double DEFAULT_ROTATION_BIAS = 10.0;
-    public static final double DEFAULT_TRANSLATION_BIAS = 5.0;
+    public static final double DEFAULT_ROTATION_BIAS = 20.0;
+    public static final double DEFAULT_TRANSLATION_BIAS = 1.0;
     public static final double DEFAULT_FORWARD_BIAS = 1.1;
 
     protected final DoubleProperty rotationBias = new SimpleDoubleProperty();
@@ -98,12 +93,12 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
 
         DirectedAmoebotParticle particle = (DirectedAmoebotParticle) p;
 
-        if (RNG.randomDouble() <= 0.5) {
+        if (Utils.randomDouble() <= 0.5) {
             // With one half probability, we rotate
             ParticleGrid.Direction randomDirection = particle.getRandomDirection();
 
             double moveProbability = this.getRotateMoveProbability(particle, randomDirection);
-            if (RNG.randomDouble() > moveProbability) {
+            if (Utils.randomDouble() > moveProbability) {
                 return;
             }
 
@@ -117,7 +112,7 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
                 return Math.pow(this.getForwardBias(), normalizeDotProduct(Math.cos(angle)));
             });
 
-            ParticleGrid.Direction randomDirection = selector.next(RNG.random);
+            ParticleGrid.Direction randomDirection = selector.next(Utils.random);
 
             // Run move validation
             if (!this.isMoveValid(particle, randomDirection)) {
@@ -125,7 +120,7 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
             }
 
             double moveProbability = this.getTranslateMoveProbability(particle, randomDirection);
-            if (RNG.randomDouble() > moveProbability) {
+            if (Utils.randomDouble() > moveProbability) {
                 return;
             }
 
@@ -144,7 +139,7 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
         return p instanceof DirectedAmoebotParticle;
     }
 
-    public double getRotateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
+    private double getRotateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
         List<Particle> neighbors = p.getNeighborParticles(false, null);
 
         double sumDotProducts = getDotProductSum(neighbors, p.getDirection());
@@ -164,7 +159,7 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
         return sumDotProducts;
     }
 
-    public double getTranslateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
+    private double getTranslateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
         AmoebotGrid.AmoebotCompass compass = (AmoebotGrid.AmoebotCompass) p.compass;
         ParticleGrid.Direction particleDirection = p.getDirection();
 
@@ -172,8 +167,7 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
         List<Particle> futureNeighbors = p.getAdjacentPositionNeighborParticles(inDirection, false, particle -> particle
                 != p);
 
-        double translationBiasTerm = Math.pow(this.getTranslationBias(),
-                futureNeighbors.size() - currentNeighbors.size());
+        double translationBiasTerm = Math.pow(this.getTranslationBias(), futureNeighbors.size() - currentNeighbors.size());
 
         double rotationBiasExponent = getDotProductSum(futureNeighbors, p.getDirection()) - getDotProductSum(currentNeighbors, p.getDirection());
         double rotationBiasTerm = Math.pow(this.getRotationBias(), rotationBiasExponent);

@@ -20,8 +20,8 @@ package com.cemgokmen.particles.runners;
 
 import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
 import com.cemgokmen.particles.graphics.GridGraphics;
-import com.cemgokmen.particles.misc.PropertyUtils;
-import com.cemgokmen.particles.misc.Utils;
+import com.cemgokmen.particles.util.PropertyUtils;
+import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Maps;
@@ -58,14 +58,14 @@ public class TrialUtils {
         return images;
     }
 
-    public static Table<Number, Number, File> runPropertyValueTrials(Supplier<ParticleGrid> gridSupplier, Class<? extends ParticleAlgorithm> algorithmClass, String propertyName, List<Number> propertyValues, int[] stoppingPoints, Path targetPath, String imageExt) throws Exception {
+    public static Table<Number, Number, File> runPropertyValueTrials(Supplier<ParticleGrid> gridSupplier, Supplier<ParticleAlgorithm> algorithmSupplier, String propertyName, List<Number> propertyValues, int[] stoppingPoints, Path targetPath, String imageExt) throws Exception {
         Table<Number, Number, File> images = HashBasedTable.create();
         propertyValues.parallelStream().forEach(y -> {
             System.out.printf("Next value: %s=%s\n", propertyName, y.toString());
             try {
-                ParticleAlgorithm algorithm = Utils.getZeroParameterPublicConstructor(algorithmClass).newInstance();
+                ParticleAlgorithm algorithm = algorithmSupplier.get();
 
-                final Property property = PropertyUtils.getPropertyWithName(algorithm, algorithmClass, propertyName);
+                final Property property = PropertyUtils.getPropertyWithName(algorithm, algorithm.getClass(), propertyName);
                 property.setValue(y);
 
                 final ParticleGrid grid = gridSupplier.get();

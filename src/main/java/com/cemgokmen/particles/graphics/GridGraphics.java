@@ -19,8 +19,8 @@
 package com.cemgokmen.particles.graphics;
 
 import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
-import com.cemgokmen.particles.misc.PropertyUtils;
-import com.cemgokmen.particles.misc.Utils;
+import com.cemgokmen.particles.util.PropertyUtils;
+import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.orsonpdf.PDFDocument;
@@ -55,10 +55,19 @@ public class GridGraphics {
     public static final int BORDER_WIDTH = 4;
     public static final BasicStroke BORDER_STROKE = new BasicStroke(BORDER_WIDTH, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND);
 
+    public static final int COM_RADIUS = 10;
+    public static final Vector COM_TOP_LEFT_VECTOR = Utils.getVector(-COM_RADIUS, -COM_RADIUS);
+
+    public static final int COM_STROKE_WIDTH = 2;
+    public static final BasicStroke COM_STROKE = new BasicStroke(COM_STROKE_WIDTH, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND);
+
+    public static final Color COM_FILL_COLOR = Color.ORANGE;
+    public static final Color COM_STROKE_COLOR = Color.GREEN;
+
     public static final int PAGE_SIZE = 300;
 
     public static Dimension getGridImageDimensions(ParticleGrid grid) {
-        List<Vector> extremities = grid.getExtremities();
+        List<Vector> extremities = grid.getBoundaryVertices();
 
         // Store the extremities in a matrix
         Matrix m = Matrix.zero(2, extremities.size());
@@ -153,7 +162,7 @@ public class GridGraphics {
     }
 
     public static void drawGridOntoGraphics(ParticleGrid grid, Graphics2D graphics, double size) {
-        List<Vector> extremities = grid.getExtremities();
+        List<Vector> extremities = grid.getBoundaryVertices();
 
         // Store the extremities in a matrix
         Matrix m = Matrix.zero(2, extremities.size());
@@ -200,6 +209,7 @@ public class GridGraphics {
         drawBorders(graphics, grid);
         drawEdges(graphics, grid);
         drawParticles(graphics, grid);
+        //drawCenterOfMass(graphics, grid);
     }
 
     private static void drawBackground(Graphics2D graphics, ParticleGrid grid) {
@@ -216,7 +226,7 @@ public class GridGraphics {
     }
 
     private static void drawBorders(Graphics2D graphics, ParticleGrid grid) {
-        List<Vector> extremities = grid.getExtremities();
+        List<Vector> extremities = grid.getBoundaryVertices();
         Path2D.Double polygon = new Path2D.Double.Double();
 
         Vector firstPosition = grid.getUnitPixelCoordinates(extremities.get(0).multiply(EDGE_LENGTH));
@@ -261,5 +271,20 @@ public class GridGraphics {
             Vector position = grid.getUnitPixelCoordinates(grid.getParticlePosition(p)).multiply(EDGE_LENGTH);
             p.drawParticle(graphics, position, EDGE_LENGTH);
         }
+    }
+
+    private static void drawCenterOfMass(Graphics2D graphics, ParticleGrid grid) {
+        Vector com = grid.getCenterOfMass();
+        Vector screenPosition = grid.getUnitPixelCoordinates(com).multiply(EDGE_LENGTH);
+
+        graphics.setColor(COM_STROKE_COLOR);
+        graphics.setPaint(COM_FILL_COLOR);
+        graphics.setStroke(COM_STROKE);
+
+        Vector topLeft = screenPosition.add(COM_TOP_LEFT_VECTOR);
+
+        Ellipse2D.Double circle = new Ellipse2D.Double(topLeft.get(0), topLeft.get(1),
+                2 * COM_RADIUS, 2 * COM_RADIUS);
+        graphics.fill(circle);
     }
 }

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.io;
+package com.cemgokmen.particles.io.html;
 
 import com.google.common.base.Charsets;
 import com.google.common.collect.HashBasedTable;
