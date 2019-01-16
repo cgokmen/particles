@@ -18,6 +18,7 @@
 
 package com.cemgokmen.particles.models.amoebot.gridshapes;
 
+import com.cemgokmen.particles.util.VectorWrapper;
 import org.junit.Test;
 import org.la4j.Vector;
 
@@ -30,7 +31,7 @@ public class VectorWrapperTest {
         int dist = 5;
 
         Vector v = Vector.constant(1, 0);
-        assertEquals(v, ToroidalAmoebotGrid.wrapVector(v, dist));
+        assertEquals(v, VectorWrapper.wrapVector(v, dist));
     }
 
     @Test
@@ -38,7 +39,7 @@ public class VectorWrapperTest {
         int dist = 5;
 
         Vector v = Vector.constant(1, 2);
-        assertEquals(v, ToroidalAmoebotGrid.wrapVector(v, dist));
+        assertEquals(v, VectorWrapper.wrapVector(v, dist));
     }
 
     @Test
@@ -46,7 +47,7 @@ public class VectorWrapperTest {
         int dist = 5;
 
         Vector v = Vector.constant(1, -2);
-        assertEquals(v, ToroidalAmoebotGrid.wrapVector(v, dist));
+        assertEquals(v, VectorWrapper.wrapVector(v, dist));
     }
 
     @Test
@@ -55,7 +56,7 @@ public class VectorWrapperTest {
 
         Vector v = Vector.constant(1, 6);
         Vector expected = Vector.constant(1, -5);
-        assertEquals(expected, ToroidalAmoebotGrid.wrapVector(v, dist));
+        assertEquals(expected, VectorWrapper.wrapVector(v, dist));
     }
 
     @Test
@@ -64,7 +65,7 @@ public class VectorWrapperTest {
 
         Vector v = Vector.constant(1, -12);
         Vector expected = Vector.constant(1, -1);
-        assertEquals(expected, ToroidalAmoebotGrid.wrapVector(v, dist));
+        assertEquals(expected, VectorWrapper.wrapVector(v, dist));
     }
 
     @Test
@@ -73,6 +74,6 @@ public class VectorWrapperTest {
 
         Vector v = Vector.constant(1, -18);
         Vector expected = Vector.constant(1, 4);
-        assertEquals(expected, ToroidalAmoebotGrid.wrapVector(v, dist));
+        assertEquals(expected, VectorWrapper.wrapVector(v, dist));
     }
 }

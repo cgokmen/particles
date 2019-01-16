@@ -18,26 +18,36 @@
 
 package com.cemgokmen.particles.algorithms;
 
+import com.cemgokmen.particles.capabilities.MovementCapable;
+import com.cemgokmen.particles.capabilities.NeighborDetectionCapable;
+import com.cemgokmen.particles.capabilities.ParticleCapability;
+import com.cemgokmen.particles.capabilities.UniformRandomDirectionCapable;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
 import com.cemgokmen.particles.models.amoebot.specializedparticles.FoodAmoebotParticle;
 import com.cemgokmen.particles.models.amoebot.specializedparticles.ForagingAmoebotParticle;
+import com.cemgokmen.particles.util.Utils;
+import com.google.common.collect.ImmutableList;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 
-public class ForagingAlgorithm extends CompressionAlgorithm {
+public class ForagingAlgorithm extends ParticleAlgorithm {
+    public static final List<Class<? extends ParticleCapability>> requiredCapabilities = ImmutableList.of(MovementCapable.class, UniformRandomDirectionCapable.class, NeighborDetectionCapable.class);
+
     public static final double DEFAULT_FED_LAMBDA = 4.0;
     public static final double DEFAULT_HUNGRY_LAMBDA = 1.0;
 
     public static final int DEFAULT_FOOD_LIFETIME = Integer.MAX_VALUE;
     public static final int DEFAULT_FOOD_TOKEN_LIFETIME = 4;
     public static final int DEFAULT_PARTICLE_MAXIMUM_FED_ACTIVATIONS = 500;
+    public static final double DEFAULT_LAMBDA = 4.0;
 
     protected final DoubleProperty fedLambda = new SimpleDoubleProperty();
     protected final DoubleProperty hungryLambda = new SimpleDoubleProperty();
@@ -45,6 +55,7 @@ public class ForagingAlgorithm extends CompressionAlgorithm {
     protected final IntegerProperty foodLifetime = new SimpleIntegerProperty();
     protected final IntegerProperty foodTokenLifetime = new SimpleIntegerProperty();
     protected final IntegerProperty particleMaximumFedActivations = new SimpleIntegerProperty();
+    protected final DoubleProperty lambda = new SimpleDoubleProperty();
 
 
     public ForagingAlgorithm(double fedLambda, double hungryLambda, int foodLifetime, int foodTokenLifetime, int particleMaximumFedActivations) {
@@ -119,7 +130,6 @@ public class ForagingAlgorithm extends CompressionAlgorithm {
         this.particleMaximumFedActivations.set(particleMaximumFedActivations);
     }
 
-    @Override
     public double getCompressionBias(Particle p) {
         if (p instanceof FoodAmoebotParticle) {
             return 1;
@@ -133,9 +143,23 @@ public class ForagingAlgorithm extends CompressionAlgorithm {
         if (p instanceof FoodAmoebotParticle) {
             ((FoodAmoebotParticle) p).getNeighborParticles(false, particle -> particle instanceof ForagingAmoebotParticle).forEach(particle -> ((ForagingAmoebotParticle) particle).giveFoodToken(this.getFoodTokenLifetime(), this.getParticleMaximumFedActivations()));
             ((FoodAmoebotParticle) p).decrementLifetime(this.getFoodLifetime());
+
+            // Does p have neighbors?
+            //boolean pConnected = ((FoodAmoebotParticle) p).getNeighborParticles(false, x -> !(x instanceof FoodAmoebotParticle)).size() > 0;
+
+            // Message passing hack right here. First, clear everyone.
+            /*ParticleGrid g = p.getGrid();
+            if (pConnected)
+                g.getAllParticles().filter(x -> x instanceof ForagingAmoebotParticle).forEach(x -> ((ForagingAmoebotParticle) x).giveFoodToken(this.getFoodTokenLifetime(), this.getParticleMaximumFedActivations()));
+            else
+                g.getAllParticles().filter(x -> x instanceof ForagingAmoebotParticle).forEach(x -> ((ForagingAmoebotParticle) x).giveFoodToken(0, 0));*/
+
+            // Then, force the message onto everyone important.
+            // TODO: Maybe do a search here?
         } else if (p instanceof ForagingAmoebotParticle) {
             // Do the feeding first
             ForagingAmoebotParticle particle = (ForagingAmoebotParticle) p;
+
             /*if (particle.getNeighborParticles(false, particle1 -> particle1 instanceof FoodAmoebotParticle).size() > 0) particle.feed();
             else particle.decrementFedActivations();*/
 
@@ -144,7 +168,7 @@ public class ForagingAlgorithm extends CompressionAlgorithm {
                 int token = particle.getFoodToken();
                 --token;
                 if (token > 0) {
-                    ParticleGrid.Direction randomDirection = particle.getRandomDirection();
+                    ParticleGrid.Direction randomDirection = particle.getUniformRandomDirection();
                     ForagingAmoebotParticle nbr = (ForagingAmoebotParticle) particle.getNeighborInDirection(randomDirection, 0, particle1 -> particle1 instanceof ForagingAmoebotParticle);
                     if (nbr != null) {
                         nbr.giveFoodToken(token, this.getParticleMaximumFedActivations());
@@ -155,34 +179,50 @@ public class ForagingAlgorithm extends CompressionAlgorithm {
             particle.incrementLastFedActivationsAgo();
             particle.decrementFedActivations();
 
-            super.onParticleActivation(p);
+            // TODO: CALL COMPRESSION'S METHOD
+            // Pick a random direction
+            ParticleGrid.Direction randomDirection = particle.getUniformRandomDirection();
+
+            // Run move validation
+            if (!this.isMoveValid(particle, randomDirection)) {
+                return;
+            }
+
+            double moveProbability = this.getMoveProbability(particle, randomDirection);
+            if (Utils.randomDouble() > moveProbability) {
+                return;
+            }
+
+            // Now make the move
+            try {
+                particle.move(randomDirection);
+            } catch (Exception ignored) {
+
+            }
         }
     }
 
     @Override
+    public List<Class<? extends ParticleCapability>> getRequiredCapabilities() {
+        return requiredCapabilities;
+    }
+
     public boolean isSwapsAllowed() {
         return true;
     }
 
-    @Override
     public boolean isNonSwapsAllowed() {
         return true;
     }
 
-    @Override
-    public boolean isParticleAllowed(Particle p) {
-        return p instanceof ForagingAmoebotParticle || p instanceof FoodAmoebotParticle;
-    }
-
-    @Override
     public boolean isMoveValid(AmoebotParticle p, ParticleGrid.Direction d) {
         // Do not swap with food particles
-        Particle nbr = p.getNeighborInDirection(d, 0, null);
-        if (nbr != null && !nbr.getClass().equals(p.getClass())) {
+        Particle nbr = p.getNeighborInDirection(d, 0, x -> x instanceof FoodAmoebotParticle);
+        if (nbr != null) {
             return false;
         }
 
-        return super.isMoveValid(p, d);
+        return RuleUtils.isMoveValidCompressionMove(p, d, false, true, x -> x instanceof ForagingAmoebotParticle);
     }
 
     @Override
@@ -197,5 +237,18 @@ public class ForagingAlgorithm extends CompressionAlgorithm {
 
         info.put("Longest un-fed wait so far", longestWaiting + "");
         return info;
+    }
+
+
+    @Override
+    public boolean isGridValid(ParticleGrid grid) {
+        return RuleUtils.checkParticleConnection(grid, particle -> true) && RuleUtils.checkParticleHoles(grid, particle -> true);
+    }
+
+    public double getMoveProbability(AmoebotParticle p, ParticleGrid.Direction inDirection) {
+        int currentNeighbors = p.getNeighborParticles(false, null).size();
+        int futureNeighbors = p.getAdjacentPositionNeighborParticles(inDirection, false, particle -> particle
+                != p).size();
+        return Math.pow(this.getCompressionBias(p), futureNeighbors - currentNeighbors);
     }
 }

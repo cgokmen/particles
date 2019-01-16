@@ -24,9 +24,13 @@ import java.lang.reflect.Constructor;
 import java.util.Random;
 
 public class Utils {
-    public static final Random random = new Random();
+    public static final Random random = new Random(1337);
 
     public static Vector getVector(int x, int y) {
+        return Vector.fromArray(new double[]{x, y});
+    }
+
+    public static Vector getVector(double x, double y) {
         return Vector.fromArray(new double[]{x, y});
     }
 
@@ -51,5 +55,31 @@ public class Utils {
 
     public static int randomInt(int bound) {
         return random.nextInt(bound);
+    }
+
+    public static double randomWrappedNorm(double sigma) {
+        // Start in range [0, 2pi]
+        double rnorm = (random.nextGaussian() * sigma) + Math.PI;
+        double angle = rnorm % (2 * Math.PI);
+        if (angle < 0) angle += 2 * Math.PI;
+
+        // Convert to our correct range and return
+        return angle - Math.PI;
+    }
+
+    public static double getDifferenceBetweenAngles(double b1, double b2) {
+        double r = (b2 - b1) % (2 * Math.PI);
+        if (r < -Math.PI)
+            r += 2 * Math.PI;
+        if (r >= Math.PI)
+            r -= 2 * Math.PI;
+        return r;
+    }
+
+    public static boolean is2DVectorShorterThan(Vector v, double length) {
+        double x = v.get(0);
+        double y = v.get(1);
+
+        return x * x + y * y < length * length;
     }
 }

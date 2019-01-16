@@ -22,6 +22,7 @@ import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
 import org.la4j.Vector;
 
 import java.awt.*;
+import java.util.function.Function;
 
 public class ForagingAmoebotParticle extends AmoebotParticle {
     private int maximumFedActivations;
@@ -118,8 +119,8 @@ public class ForagingAmoebotParticle extends AmoebotParticle {
     }
 
     @Override
-    public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength) {
-        super.drawParticle(graphics, screenPosition, edgeLength);
+    public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength, Function<Vector, Vector> gridToScreenCoords) {
+        super.drawParticle(graphics, screenPosition, edgeLength, gridToScreenCoords);
 
         graphics.setColor(Color.BLACK);
 

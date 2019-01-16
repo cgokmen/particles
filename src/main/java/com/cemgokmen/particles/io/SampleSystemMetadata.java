@@ -22,20 +22,26 @@ import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
-import com.cemgokmen.particles.models.amoebot.gridshapes.HexagonalAmoebotGrid;
-import com.cemgokmen.particles.models.amoebot.gridshapes.QuadrilateralAmoebotGrid;
-import com.cemgokmen.particles.models.amoebot.gridshapes.ToroidalAmoebotGrid;
+import com.cemgokmen.particles.models.amoebot.gridshapes.*;
+import com.cemgokmen.particles.models.amoebot.specializedparticles.ContinuousDirectedAmoebotParticle;
 import com.cemgokmen.particles.models.amoebot.specializedparticles.DirectedAmoebotParticle;
 import com.cemgokmen.particles.models.amoebot.specializedparticles.ForagingAmoebotParticle;
 import com.cemgokmen.particles.models.amoebot.specializedparticles.SeparableAmoebotParticle;
+import com.cemgokmen.particles.models.continuous.ContinuousParticle;
+import com.cemgokmen.particles.models.continuous.ContinuousParticleGrid;
 
 public enum SampleSystemMetadata {
     AMOEBOT_1000_2CLASS("Amoebot/1000 2-class particles", HexagonalAmoebotGrid.class, SeparableAmoebotParticle.class, "sample_systems/separation/1000particles-2class-spread.txt"),
     AMOEBOT_100_2CLASS("Amoebot/100 2-class particles", HexagonalAmoebotGrid.class, SeparableAmoebotParticle.class, "sample_systems/separation/100particles-2class.txt"),
+    AMOEBOT_20_LINEAR("Amoebot/20 linear particles", CircularAmoebotGrid.class, DirectedAmoebotParticle.class, "sample_systems/alignment/20particles-linear.txt"),
     AMOEBOT_100_6DIRECTION("Amoebot/100 6-direction particles", ToroidalAmoebotGrid.class, DirectedAmoebotParticle.class, "sample_systems/alignment/100particles-randomdir.txt"),
     AMOEBOT_100_6DIRECTION_LARGE("Amoebot/100 6-direction particles w/ large grid", ToroidalAmoebotGrid.class, DirectedAmoebotParticle.class, "sample_systems/alignment/100particles-randomdir-largegrid.txt"),
+    AMOEBOT_100_CONTINUOUS("Amoebot/100 continuous-direction particles", ToroidalAmoebotGrid.class, ContinuousDirectedAmoebotParticle.class, "sample_systems/alignment/100particles-randomdir.txt"),
+    AMOEBOT_100_CONTINUOUS_LARGE("Amoebot/100 continuous-direction particles w/ large grid", ToroidalAmoebotGrid.class, ContinuousDirectedAmoebotParticle.class, "sample_systems/alignment/100particles-randomdir-largegrid.txt"),
     AMOEBOT_100_1FOOD("Amoebot/100 particles and 1 food", HexagonalAmoebotGrid.class, ForagingAmoebotParticle.class, "sample_systems/foraging/100particles-1food.txt"),
-    AMOEBOT_3PARTICLES("Amoebot/3 particles", HexagonalAmoebotGrid.class, AmoebotParticle.class, "sample_systems/compression/3particles.txt");
+    AMOEBOT_3PARTICLES("Amoebot/3 particles", HexagonalAmoebotGrid.class, AmoebotParticle.class, "sample_systems/compression/3particles.txt"),
+    CONT_100("Continuous/100 particles", ContinuousParticleGrid.class, ContinuousParticle.class, "sample_systems/alignment/100particles-randomdir.txt"),
+    CONT_100_LARGE("Continuous/100 particles w/ large grid", ContinuousParticleGrid.class, ContinuousParticle.class, "sample_systems/alignment/100particles-randomdir-largegrid.txt");
 
     public final String humanReadableName;
     public final Class<? extends ParticleGrid> gridClass;

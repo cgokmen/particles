@@ -19,20 +19,35 @@
 package com.cemgokmen.particles.models;
 
 import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
+import com.cemgokmen.particles.algorithms.RuleUtils;
+import com.cemgokmen.particles.capabilities.ParticleCapability;
+import com.cemgokmen.particles.graphics.GridGraphics;
 import com.cemgokmen.particles.storage.ParticleStorage;
 import com.cemgokmen.particles.util.RandomSelector;
 import com.cemgokmen.particles.util.Utils;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.*;
 import org.la4j.Vector;
 
 import javax.annotation.Nonnull;
+import java.awt.*;
+import java.awt.geom.Path2D;
 import java.util.*;
+import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class ParticleGrid {
     private int activationsRun = 0;
+    private int movesMade = 0;
+
+    public static class DataPoint {
+        public Vector position;
+        public double weight;
+    }
+
+    private List<DataPoint> history = Lists.newArrayList();
+    private Particle chosenParticle = null;
 
     public static class Direction {
         private final Vector vector;
@@ -54,7 +69,7 @@ public abstract class ParticleGrid {
     public abstract static class Compass {
         abstract public ImmutableList<Direction> getDirections();
 
-        abstract public Direction shiftDirectionCounterclockwise(Direction d, int times);
+        abstract public Direction shiftDirectionCounterclockwise(Direction d, double times);
 
         abstract public double getAngleBetweenDirections(Direction a, Direction b);
     }
@@ -63,11 +78,13 @@ public abstract class ParticleGrid {
 
     abstract public Compass getCompass();
 
-    abstract public boolean isPositionValid(Vector p);
+    abstract public boolean isPositionValid(Vector p, Particle forParticle);
 
     abstract public boolean isParticleValid(Particle p);
 
-    abstract public List<Vector> getValidPositions();
+    abstract public Stream<Vector> getValidPositions();
+
+    abstract public Vector getRandomPosition(Particle particle);
 
     abstract public List<Vector> getBoundaryVertices();
 
@@ -76,11 +93,19 @@ public abstract class ParticleGrid {
     }
 
     public void addParticle(Particle p, Vector position) throws Exception {
+        if (!this.isPositionValid(position, p)) {
+            throw new Exception("Invalid add - position " + position + " out of bounds.");
+        }
+
         if (this.isPositionOccupied(position)) {
             throw new Exception("Invalid add - there already is a particle at position " + position);
         }
         this.getStorage().addParticle(p, position);
         p.setGrid(this);
+
+        if (this.chosenParticle == null) {
+            this.chosenParticle = p;
+        }
     }
 
     public void removeParticle(Particle p) throws Exception {
@@ -92,12 +117,34 @@ public abstract class ParticleGrid {
     }
 
     public void moveParticle(Particle p, Vector v) throws Exception {
+        if (!this.isPositionValid(v, p)) {
+            throw new Exception("Invalid move - position " + v + " out of bounds.");
+        }
+
         if (this.isPositionOccupied(v)) {
             throw new Exception("Cannot move to occupied position " + v);
         }
 
         this.removeParticle(p);
         this.addParticle(p, v);
+        this.movesMade++;
+
+        // Get the largest component
+        Set<Particle> largestComponent = RuleUtils.getLargestComponent(this);
+        Vector centroid = largestComponent.parallelStream().map(this::getParticlePosition)
+                .reduce(Vector.zero(2), Vector::add)
+                .divide(largestComponent.size());
+
+        // Add to the datapoints now
+        // Find the thing
+        double componentSize = largestComponent.size();
+        double weight = componentSize / this.getParticleCount();
+
+        DataPoint dp = new DataPoint();
+        dp.position = centroid;
+        dp.weight = weight;
+
+        this.history.add(dp);
     }
 
     public Particle getParticleAtPosition(Vector position) {
@@ -117,18 +164,12 @@ public abstract class ParticleGrid {
         return p.add(d.getVector());
     }
 
-    public Vector[] getAdjacentPositions(Vector p) {
-        List<Direction> validDirections = this.getCompass().getDirections();
-        Vector[] adjacentPositions = new Vector[validDirections.size()];
-        for (int i = 0; i < validDirections.size(); i++) {
-            adjacentPositions[i] = this.getPositionInDirection(p, validDirections.get(i));
-        }
-
-        return adjacentPositions;
+    public Stream<Vector> getAdjacentPositions(Vector p) {
+        return this.getCompass().getDirections().stream().map(d -> this.getPositionInDirection(p, d));
     }
 
     public boolean arePositionsAdjacent(Vector p1, Vector p2) {
-        return Arrays.asList(this.getAdjacentPositions(p1)).contains(p2);
+        return this.getAdjacentPositions(p1).anyMatch(p -> p == p2);
     }
 
     public int getParticleCount() {
@@ -165,15 +206,11 @@ public abstract class ParticleGrid {
     }
 
     public List<Particle> getPositionNeighbors(Vector position, boolean includeNulls) {
-        List<Particle> neighbors = new ArrayList<>(6);
-        for (Vector v : this.getAdjacentPositions(position)) {
-            Particle neighbor = this.getParticleAtPosition(v);
-            if (includeNulls || neighbor != null) {
-                neighbors.add(neighbor);
-            }
-        }
+        Stream<Particle> stream = this.getAdjacentPositions(position).map(this::getParticleAtPosition);
 
-        return neighbors;
+        if (!includeNulls) stream = stream.filter(Objects::nonNull);
+
+        return stream.collect(Collectors.toList());
     }
 
     public List<Particle> getPositionNeighbors(Vector position, @Nonnull Predicate<Particle> filter, boolean includeNulls) {
@@ -227,7 +264,19 @@ public abstract class ParticleGrid {
         }
     }
 
-    public abstract List<Class<? extends ParticleAlgorithm>> getCompatibleAlgorithms();
+    public List<Class<? extends ParticleAlgorithm>> getCompatibleAlgorithms() {
+        return ParticleAlgorithm.IMPLEMENTATIONS.stream()
+                .filter(impl -> {
+                    try {
+                        // Every algorithm that allows all particles on our grid is compatible.
+                        ParticleAlgorithm instance = Utils.getZeroParameterPublicConstructor(impl).newInstance();
+                        return ParticleGrid.this.getAllParticles().allMatch(instance::isParticleAllowed);
+                    } catch (Exception e) {
+                        return false;
+                    }
+                })
+                .collect(Collectors.toList());
+    }
 
     public Stream<ParticleAlgorithm> getRunningAlgorithms() {
         Set<ParticleAlgorithm> runningAlgorithms = new HashSet<>();
@@ -248,15 +297,44 @@ public abstract class ParticleGrid {
         return this.activationsRun;
     }
 
+    public int getMovesMade() {
+        return this.movesMade;
+    }
+
     public Map<String, String> getGridInformation() {
         LinkedHashMap<String, String> map = new LinkedHashMap<>();
 
         map.put("Particle count", this.getParticleCount() + "");
         map.put("Activations run", this.activationsRun + "");
+        map.put("Moves made", this.movesMade + "");
         map.put("Center of mass", this.getCenterOfMass().toString());
 
         this.getRunningAlgorithms().forEach(algorithm -> map.putAll(algorithm.getInformation(this)));
 
         return map;
+    }
+
+    public void drawBoundary(Graphics2D graphics) {
+        List<Vector> extremities = this.getBoundaryVertices();
+        Path2D.Double polygon = new Path2D.Double.Double();
+
+        Vector firstPosition = this.getUnitPixelCoordinates(extremities.get(0).multiply(GridGraphics.EDGE_LENGTH));
+        polygon.moveTo(firstPosition.get(0), firstPosition.get(1));
+
+        for (Vector position : extremities) {
+            Vector screenPosition = this.getUnitPixelCoordinates(position).multiply(GridGraphics.EDGE_LENGTH);
+            polygon.lineTo(screenPosition.get(0), screenPosition.get(1));
+        }
+
+        polygon.closePath();
+
+        graphics.setColor(GridGraphics.BORDER_COLOR);
+        graphics.setStroke(GridGraphics.BORDER_STROKE);
+        graphics.draw(polygon);
+    }
+
+    public List<DataPoint> getAdditionalPlotPoints() {
+        // Return points and strengths between 0 and 1 to be plotted.
+        return ImmutableList.copyOf(this.history);
     }
 }

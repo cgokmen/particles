@@ -18,17 +18,17 @@
 
 package com.cemgokmen.particles.models.amoebot.gridshapes;
 
+import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.storage.BiMapParticleStorage;
 import com.cemgokmen.particles.storage.ParticleStorage;
-import com.cemgokmen.particles.storage.TableParticleStorage;
 import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
 import com.google.common.collect.Lists;
 import org.la4j.Vector;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class QuadrilateralAmoebotGrid extends AmoebotGrid {
     private final int sideHalfLength;
@@ -49,23 +49,19 @@ public class QuadrilateralAmoebotGrid extends AmoebotGrid {
     }
 
     @Override
-    public boolean isPositionValid(Vector p) {
+    public boolean isPositionValid(Vector p, Particle forParticle) {
         return p.length() == 2 && Math.abs(p.get(0)) <= this.sideHalfLength && Math.abs(p.get(1)) <= this.sideHalfLength;
     }
 
     @Override
-    public List<Vector> getValidPositions() {
-        List<Vector> vectors = new ArrayList<>();
-
+    public Stream<Vector> getValidPositions() {
         int max = this.sideHalfLength;
 
-        IntStream.rangeClosed(-max, max).forEach(x -> {
-            IntStream.rangeClosed(-max, max).forEach(y -> {
-                vectors.add(Utils.getVector(x, y));
+        return IntStream.rangeClosed(-max, max).boxed().flatMap(x -> {
+            return IntStream.rangeClosed(-max, max).mapToObj(y -> {
+                return Utils.getVector(x, y);
             });
         });
-
-        return vectors;
     }
 
     @Override

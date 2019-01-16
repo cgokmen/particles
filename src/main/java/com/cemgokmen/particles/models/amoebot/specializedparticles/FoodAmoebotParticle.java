@@ -41,7 +41,7 @@ public class FoodAmoebotParticle extends AmoebotParticle {
     }
 
     @Override
-    public void move(ParticleGrid.Direction inDirection, boolean swapsAllowed, boolean nonSwapsAllowed) throws InvalidMoveException {
+    public void move(ParticleGrid.Direction inDirection) {
         throw new InvalidMoveException("Cannot move food particle");
     }
 

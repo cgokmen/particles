@@ -22,6 +22,7 @@ import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
 import org.la4j.Vector;
 
 import java.awt.*;
+import java.util.function.Function;
 
 public class SeparableAmoebotParticle extends AmoebotParticle {
     private final int classNumber;
@@ -72,8 +73,8 @@ public class SeparableAmoebotParticle extends AmoebotParticle {
     }
 
     @Override
-    public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength) {
-        super.drawParticle(graphics, screenPosition, edgeLength);
+    public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength, Function<Vector, Vector> gridToScreenCoords) {
+        super.drawParticle(graphics, screenPosition, edgeLength, gridToScreenCoords);
 
         graphics.setColor(Color.BLACK);
         int classNumber = this.getClassNumber();

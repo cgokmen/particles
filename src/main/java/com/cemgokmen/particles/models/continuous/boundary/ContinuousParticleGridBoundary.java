@@ -16,10 +16,16 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.models.continuous.boundary;
 
-public class InvalidMoveException extends RuntimeException {
-    public InvalidMoveException(String type) {
-        super(type);
-    }
+import org.la4j.Vector;
+
+import java.awt.*;
+import java.util.List;
+
+public interface ContinuousParticleGridBoundary {
+    boolean isVectorInBoundary(Vector v, double radius);
+    double getArea();
+    List<Vector> getZoomAreaVertices();
+    Shape getShape();
 }

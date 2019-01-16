@@ -16,10 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.capabilities;
 
-public class InvalidMoveException extends RuntimeException {
-    public InvalidMoveException(String type) {
-        super(type);
-    }
+import com.cemgokmen.particles.models.ParticleGrid;
+
+public interface MovementCapable extends ParticleCapability {
+    void move(ParticleGrid.Direction d);
+    boolean isDirectionWithinBounds(ParticleGrid.Direction d);
 }

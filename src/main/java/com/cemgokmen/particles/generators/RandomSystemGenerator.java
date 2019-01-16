@@ -29,49 +29,55 @@ import org.la4j.Vector;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class RandomSystemGenerator {
+    public static void addParticles(ParticleGrid grid, Stream<Particle> particleStream, Predicate<Vector> positionPredicate, int count) {
+        particleStream.limit(count).forEach(particle -> {
+            boolean inserted = false;
+            while (!inserted) {
+                try {
+                    // Get a valid position
+                    Vector position = grid.getRandomPosition(particle);
+
+                    if (positionPredicate != null && !positionPredicate.test(position)) continue;
+
+                    // Check if it is occupied
+                    if (grid.isPositionOccupied(position)) continue;
+
+                    // Add the particle
+                    grid.addParticle(particle, position);
+
+                    // Validate the grid
+                    // The particle only has an algorithm for this purpose.
+                    ParticleAlgorithm algorithm = particle.getAlgorithm();
+                    if (algorithm != null) {
+                        if (!algorithm.isGridValid(grid)) {
+                            grid.removeParticle(particle);
+
+                            continue;
+                        } else {
+                            // Delete the algorithm once we're done.
+                            particle.setAlgorithm(null);
+                        }
+                    }
+                    inserted = true;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
     public static void addParticles(ParticleGrid grid, Map<Supplier<Particle>, Double> suppliers, int count) {
         int addedCount = 0;
 
         // Make the supplier randomizer
         RandomSelector<Supplier<Particle>> randomSupplier = RandomSelector.weighted(suppliers.keySet(), suppliers::get);
-        RandomSelector<Vector> positionSupplier = RandomSelector.uniform(grid.getValidPositions());
-
-        while (addedCount < count) {
-            try {
-                // Get a valid position
-                Vector position = positionSupplier.next(Utils.random);
-
-                // Check if it is occupied
-                if (grid.isPositionOccupied(position)) continue;
-
-                // Get a particle supplier
-                Supplier<Particle> supplier = randomSupplier.next(Utils.random);
-
-                // Get a particle
-                Particle particle = supplier.get();
-
-                // Add the particle
-                grid.addParticle(particle, position);
-
-                // Validate the grid
-                ParticleAlgorithm algorithm = particle.getAlgorithm();
-                if (algorithm != null) {
-                    if (!algorithm.isGridValid(grid)) {
-                        grid.removeParticle(particle);
-
-                        continue;
-                    }
-                }
-                addedCount++;
-
-                System.out.println(addedCount);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+        addParticles(grid, Stream.generate(() -> randomSupplier.next(Utils.random).get()), null, count);
     }
 
     public static void addUniformWeightedParticles(ParticleGrid grid, List<Supplier<Particle>> suppliers, int count) {

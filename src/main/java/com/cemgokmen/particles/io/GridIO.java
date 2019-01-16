@@ -69,8 +69,8 @@ public class GridIO {
         Scanner input = new Scanner(in);
 
         ParticleGrid grid;
-        if (GRID_LOADER_MAP.containsKey(gridClass)) {
-            grid = GRID_LOADER_MAP.get(gridClass).apply(input);
+        if (GridLoaders.GRID_LOADER_MAP.containsKey(gridClass)) {
+            grid = GridLoaders.GRID_LOADER_MAP.get(gridClass).apply(input);
         } else {
             throw new InvalidParticleClassException(gridClass);
         }
@@ -84,8 +84,8 @@ public class GridIO {
 
         while (input.hasNextLine()) {
             try {
-                if (PARTICLE_TYPE_LOADER_MAP.containsKey(particleClass)) {
-                    PARTICLE_TYPE_LOADER_MAP.get(particleClass).accept(grid, input);
+                if (ParticleLoaders.PARTICLE_TYPE_LOADER_MAP.containsKey(particleClass)) {
+                    ParticleLoaders.PARTICLE_TYPE_LOADER_MAP.get(particleClass).accept(grid, input);
                 } else {
                     throw new InvalidParticleClassException(particleClass);
                 }
@@ -101,23 +101,8 @@ public class GridIO {
         return grid;
     }
 
-    private static final ImmutableMap<Class<? extends Particle>, BiConsumer<ParticleGrid, Scanner>> PARTICLE_TYPE_LOADER_MAP =
-            new ImmutableMap.Builder<Class<? extends Particle>, BiConsumer<ParticleGrid, Scanner>>()
-                    .put(AmoebotParticle.class, ParticleLoaders::loadAmoebotParticle)
-                    .put(SeparableAmoebotParticle.class, ParticleLoaders::loadSeparableAmoebotParticle)
-                    .put(DirectedAmoebotParticle.class, ParticleLoaders::loadDirectedAmoebotParticle)
-                    .put(ForagingAmoebotParticle.class, ParticleLoaders::loadForagingAmoebotParticle)
-                    .build();
-
-    private static final ImmutableMap<Class<? extends ParticleGrid>, Function<Scanner, ParticleGrid>> GRID_LOADER_MAP =
-            new ImmutableMap.Builder<Class<? extends ParticleGrid>, Function<Scanner, ParticleGrid>>()
-                    .put(HexagonalAmoebotGrid.class, GridLoaders::loadHexagonalAmoebotGrid)
-                    .put(QuadrilateralAmoebotGrid.class, GridLoaders::loadQuadrilateralAmoebotGrid)
-                    .put(ToroidalAmoebotGrid.class, GridLoaders::loadToroidalAmoebotGrid)
-                    .build();
-
-    public static final ImmutableList<Class<? extends Particle>> ALLOWED_PARTICLE_TYPES = ImmutableList.copyOf(PARTICLE_TYPE_LOADER_MAP.keySet());
-    public static final ImmutableList<Class<? extends ParticleGrid>> ALLOWED_GRID_TYPES = ImmutableList.copyOf(GRID_LOADER_MAP.keySet());
+    public static final ImmutableList<Class<? extends Particle>> ALLOWED_PARTICLE_TYPES = ImmutableList.copyOf(ParticleLoaders.PARTICLE_TYPE_LOADER_MAP.keySet());
+    public static final ImmutableList<Class<? extends ParticleGrid>> ALLOWED_GRID_TYPES = ImmutableList.copyOf(GridLoaders.GRID_LOADER_MAP.keySet());
 
     public static class InvalidParticleClassException extends Exception {
         public InvalidParticleClassException() {

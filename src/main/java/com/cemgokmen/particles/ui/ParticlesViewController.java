@@ -18,11 +18,15 @@
 
 package com.cemgokmen.particles.ui;
 
+import com.cemgokmen.particles.algorithms.AlignmentAlgorithm;
 import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
+import com.cemgokmen.particles.generators.RandomSystemGenerator;
 import com.cemgokmen.particles.graphics.GridGraphics;
 import com.cemgokmen.particles.graphics.MultipagePDFHandler;
 import com.cemgokmen.particles.io.GridIO;
 import com.cemgokmen.particles.io.SampleSystemMetadata;
+import com.cemgokmen.particles.models.amoebot.gridshapes.ToroidalAmoebotGrid;
+import com.cemgokmen.particles.models.amoebot.specializedparticles.DirectedAmoebotParticle;
 import com.cemgokmen.particles.util.PropertyUtils;
 import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
@@ -51,8 +55,11 @@ import java.io.*;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class ParticlesViewController {
     private ParticleGrid grid;

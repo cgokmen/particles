@@ -23,6 +23,7 @@ import com.cemgokmen.particles.util.PropertyUtils;
 import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
+import com.google.common.collect.Multimap;
 import com.orsonpdf.PDFDocument;
 import com.orsonpdf.PDFGraphics2D;
 import com.orsonpdf.Page;
@@ -39,6 +40,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.*;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 public class GridGraphics {
     public static final int EMPTY_POSITION_RADIUS = 3;
@@ -66,14 +69,32 @@ public class GridGraphics {
 
     public static final int PAGE_SIZE = 300;
 
-    public static Dimension getGridImageDimensions(ParticleGrid grid) {
-        List<Vector> extremities = grid.getBoundaryVertices();
+    public static Matrix getExtremityMatrix(ParticleGrid grid) {
+        Stream<Vector> positions = grid.getBoundaryVertices().stream();
 
-        // Store the extremities in a matrix
-        Matrix m = Matrix.zero(2, extremities.size());
-        for (int i = 0; i < extremities.size(); i++) {
-            m.setColumn(i, grid.getUnitPixelCoordinates(extremities.get(i)).multiply(EDGE_LENGTH));
-        }
+        // Temporary hack. TODO: Fix this.
+        positions = Stream.concat(grid.getValidPositions(), positions);
+
+        Stream<Vector> extremities = positions.map(grid::getUnitPixelCoordinates).map(v -> v.multiply(EDGE_LENGTH));
+
+        Matrix m = extremities.collect(() -> Matrix.zero(2, 2), (rolling, elem) -> {
+            // First row to get x, second row to get y. First col is min, second col is max.
+            for (int i = 0; i < 2; i++) {
+                rolling.set(i, 0, Math.min(rolling.get(i, 0), elem.get(i)));
+                rolling.set(i, 1, Math.max(rolling.get(i, 1), elem.get(i)));
+            }
+        }, (good, other) -> {
+            for (int i = 0; i < 2; i++) {
+                good.set(i, 0, Math.min(good.get(i, 0), other.get(i, 0)));
+                good.set(i, 1, Math.max(good.get(i, 1), other.get(i, 1)));
+            }
+        });
+
+        return m;
+    }
+
+    public static Dimension getGridImageDimensions(ParticleGrid grid) {
+        Matrix m = getExtremityMatrix(grid);
 
         // Get the x and y coordinates as vectors
         Vector x = m.getRow(0);
@@ -102,7 +123,8 @@ public class GridGraphics {
         Page page = pdfDoc.createPage(new Rectangle(PAGE_SIZE, PAGE_SIZE));
         PDFGraphics2D graphics = page.getGraphics2D();
         //g2.setRenderingHint(PDFHints.KEY_DRAW_STRING_TYPE, PDFHints.VALUE_DRAW_STRING_TYPE_VECTOR);
-        drawGridInfoOntoGraphics(grid, graphics, PAGE_SIZE);
+
+        //drawGridInfoOntoGraphics(grid, graphics, PAGE_SIZE);
         drawGridOntoGraphics(grid, graphics, PAGE_SIZE);
 
         pdfDoc.writeToFile(file);
@@ -114,7 +136,7 @@ public class GridGraphics {
 
     public static void drawGridOntoMultipagePDF(ParticleGrid grid, MultipagePDFHandler multipagePDFHandler) throws IOException {
         multipagePDFHandler.runOnNewPage(grid.getActivationsRun() + "", graphics -> {
-            drawGridInfoOntoGraphics(grid, graphics, PAGE_SIZE);
+            //drawGridInfoOntoGraphics(grid, graphics, PAGE_SIZE);
             drawGridOntoGraphics(grid, graphics, multipagePDFHandler.getSize());
         });
     }
@@ -162,13 +184,7 @@ public class GridGraphics {
     }
 
     public static void drawGridOntoGraphics(ParticleGrid grid, Graphics2D graphics, double size) {
-        List<Vector> extremities = grid.getBoundaryVertices();
-
-        // Store the extremities in a matrix
-        Matrix m = Matrix.zero(2, extremities.size());
-        for (int i = 0; i < extremities.size(); i++) {
-            m.setColumn(i, grid.getUnitPixelCoordinates(extremities.get(i)).multiply(EDGE_LENGTH));
-        }
+        Matrix m = getExtremityMatrix(grid);
 
         // Get the x and y coordinates as vectors
         Vector x = m.getRow(0);
@@ -188,14 +204,14 @@ public class GridGraphics {
         // Center the shorter edge
         AffineTransform secondTransform = new AffineTransform();
         if (maxRange == xRange) {
-            secondTransform.translate(0, (maxRange - yRange / 2.0));
+            secondTransform.translate(0, (maxRange - yRange) / 2.0);
         } else {
             secondTransform.translate((maxRange - xRange) / 2.0, 0);
         }
 
         // Now scale the thing so that it fits in the graphics context.
         AffineTransform lastTransform = new AffineTransform();
-        lastTransform.scale(size / maxRange, size / maxRange);
+        lastTransform.scale(size / (maxRange + 50), size / (maxRange + 50));
 
         firstTransform.preConcatenate(secondTransform);
         firstTransform.preConcatenate(lastTransform);
@@ -206,42 +222,26 @@ public class GridGraphics {
 
     private static void drawGrid(Graphics2D graphics, ParticleGrid grid) {
         drawBackground(graphics, grid);
-        drawBorders(graphics, grid);
+        grid.drawBoundary(graphics);
         drawEdges(graphics, grid);
         drawParticles(graphics, grid);
+        drawPath(graphics, grid);
         //drawCenterOfMass(graphics, grid);
     }
 
     private static void drawBackground(Graphics2D graphics, ParticleGrid grid) {
         graphics.setColor(EMPTY_POSITION_COLOR);
 
-        for (Vector v : grid.getValidPositions()) {
+        grid.getValidPositions().forEach(v -> {
             Vector screenPosition = grid.getUnitPixelCoordinates(v).multiply(EDGE_LENGTH);
             Vector topLeft = screenPosition.add(EMPTY_POSITION_TOP_LEFT_VECTOR);
 
-            Ellipse2D.Double circle = new Ellipse2D.Double(topLeft.get(0), topLeft.get(1),
-                    2 * EMPTY_POSITION_RADIUS, 2 * EMPTY_POSITION_RADIUS);
-            graphics.fill(circle);
-        }
-    }
-
-    private static void drawBorders(Graphics2D graphics, ParticleGrid grid) {
-        List<Vector> extremities = grid.getBoundaryVertices();
-        Path2D.Double polygon = new Path2D.Double.Double();
-
-        Vector firstPosition = grid.getUnitPixelCoordinates(extremities.get(0).multiply(EDGE_LENGTH));
-        polygon.moveTo(firstPosition.get(0), firstPosition.get(1));
-
-        for (Vector position : extremities) {
-            Vector screenPosition = grid.getUnitPixelCoordinates(position).multiply(EDGE_LENGTH);
-            polygon.lineTo(screenPosition.get(0), screenPosition.get(1));
-        }
-
-        polygon.closePath();
-
-        graphics.setColor(BORDER_COLOR);
-        graphics.setStroke(BORDER_STROKE);
-        graphics.draw(polygon);
+            if (!grid.isPositionOccupied(v)) {
+                Ellipse2D.Double circle = new Ellipse2D.Double(topLeft.get(0), topLeft.get(1),
+                        2 * EMPTY_POSITION_RADIUS, 2 * EMPTY_POSITION_RADIUS);
+                graphics.fill(circle);
+            }
+        });
     }
 
     private static void drawEdges(Graphics2D graphics, ParticleGrid grid) {
@@ -253,12 +253,14 @@ public class GridGraphics {
         grid.getAllParticles().forEach(p -> {
             Vector position = grid.getUnitPixelCoordinates(grid.getParticlePosition(p)).multiply(EDGE_LENGTH);
 
-            for (Particle nbr : grid.getParticleNeighbors(p, false)) {
-                if (!drawnParticles.contains(nbr)) {
-                    Vector nbrPosition = grid.getUnitPixelCoordinates(grid.getParticlePosition(nbr)).multiply(EDGE_LENGTH);
+            if (p.shouldDrawEdges()) {
+                for (Particle nbr : grid.getParticleNeighbors(p, false)) {
+                    if (nbr.shouldDrawEdges() && !drawnParticles.contains(nbr)) {
+                        Vector nbrPosition = grid.getUnitPixelCoordinates(grid.getParticlePosition(nbr)).multiply(EDGE_LENGTH);
 
-                    Line2D.Double line = new Line2D.Double(position.get(0), position.get(1), nbrPosition.get(0), nbrPosition.get(1));
-                    graphics.draw(line);
+                        Line2D.Double line = new Line2D.Double(position.get(0), position.get(1), nbrPosition.get(0), nbrPosition.get(1));
+                        graphics.draw(line);
+                    }
                 }
             }
 
@@ -267,9 +269,11 @@ public class GridGraphics {
     }
 
     private static void drawParticles(Graphics2D graphics, ParticleGrid grid) {
+        Function<Vector, Vector> gridToScreenCoords = (v) -> grid.getUnitPixelCoordinates(v).multiply(EDGE_LENGTH);
+
         grid.getAllParticles().forEach(p -> {
-            Vector position = grid.getUnitPixelCoordinates(grid.getParticlePosition(p)).multiply(EDGE_LENGTH);
-            p.drawParticle(graphics, position, EDGE_LENGTH);
+            Vector position = gridToScreenCoords.apply(grid.getParticlePosition(p));
+            p.drawParticle(graphics, position, EDGE_LENGTH, gridToScreenCoords);
         });
     }
 
@@ -286,5 +290,34 @@ public class GridGraphics {
         Ellipse2D.Double circle = new Ellipse2D.Double(topLeft.get(0), topLeft.get(1),
                 2 * COM_RADIUS, 2 * COM_RADIUS);
         graphics.fill(circle);
+    }
+
+    private static void drawPath(Graphics2D graphics, ParticleGrid grid) {
+        final List<ParticleGrid.DataPoint> plotPoints = grid.getAdditionalPlotPoints();
+
+        float hue = 0.66f;
+        float bri = 1f;
+
+        // Start at move 1000
+        for (int i = 1000; i < plotPoints.size() - 1; i++) {
+            ParticleGrid.DataPoint from = plotPoints.get(i);
+            ParticleGrid.DataPoint to = plotPoints.get(i + 1);
+
+            // Are they more than 2 units apart?
+            Vector diff = from.position.subtract(to.position);
+            if (diff.euclideanNorm() > 2) continue;
+
+            Vector fromScreen = grid.getUnitPixelCoordinates(from.position).multiply(EDGE_LENGTH);
+            Vector toScreen = grid.getUnitPixelCoordinates(to.position).multiply(EDGE_LENGTH);
+
+            double weight = (from.weight + to.weight) / 2;
+
+            Color c = Color.getHSBColor(hue, (float) (0.1 + 0.8 * weight), 1);
+            graphics.setColor(c);
+
+            Stroke stroke = new BasicStroke(1);
+            Line2D line = new Line2D.Double(fromScreen.get(0), fromScreen.get(1), toScreen.get(0), toScreen.get(1));
+            graphics.draw(line);
+        }
     }
 }

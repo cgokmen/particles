@@ -18,12 +18,9 @@
 
 package com.cemgokmen.particles.models.amoebot.specializedparticles;
 
-import com.cemgokmen.particles.capabilities.WrappedNormalRandomDirectionCapable;
-import com.cemgokmen.particles.capabilities.SpinCapable;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
-import com.cemgokmen.particles.models.continuous.ContinuousParticleGrid;
 import com.cemgokmen.particles.util.Utils;
 import org.la4j.Vector;
 
@@ -32,35 +29,28 @@ import java.awt.geom.Line2D;
 import java.util.Arrays;
 import java.util.function.Function;
 
-public class DirectedAmoebotParticle extends AmoebotParticle implements SpinCapable, WrappedNormalRandomDirectionCapable {
-    private ParticleGrid.Direction direction;
-    private final AmoebotGrid.Compass compass;
+public class ContinuousDirectedAmoebotParticle extends AmoebotParticle {
+    private double direction; // Radians from x axis, counterclockwise.
+    public final AmoebotGrid.Compass compass;
 
-    public static DirectedAmoebotParticle chosenOne;
+    public static ContinuousDirectedAmoebotParticle chosenOne;
 
-    public DirectedAmoebotParticle(AmoebotGrid.Compass compass, ParticleGrid.Direction direction, boolean greyscale) {
+    public ContinuousDirectedAmoebotParticle(AmoebotGrid.Compass compass, double direction, boolean greyscale) {
         this.compass = compass;
         this.direction = direction;
 
         if (chosenOne == null) chosenOne = this;
     }
 
-    public ParticleGrid.Direction getDirection() {
+    public double getDirection() {
         return this.direction;
     }
 
-    public void setDirection(ParticleGrid.Direction direction) {
+    public void setDirection(double direction) {
         this.direction = direction;
     }
 
-    @Override
-    public ParticleGrid.Compass getCompass() {
-        return compass;
-    }
-
-    public static final Color ARROW_COLOR = Color.BLACK;
-    public static final int ARROW_THICKNESS = 4;
-    public static final BasicStroke ARROW_STROKE = new BasicStroke(ARROW_THICKNESS, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND);
+    public static final Color ARROW_COLOR = Color.RED;
 
     @Override
     public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength, Function<Vector, Vector> gridToScreenCoords) {
@@ -68,13 +58,8 @@ public class DirectedAmoebotParticle extends AmoebotParticle implements SpinCapa
 
         // Calculate the arrow
         // Note that we need our current position for non-linear transformations
-        Vector towardsArrowTipOnGrid = this.direction.getVector();
-        Vector position = this.grid.getParticlePosition(this);
-
-        Vector arrowTipOnGrid = position.add(towardsArrowTipOnGrid);
-        Vector arrowTipOnScreen = gridToScreenCoords.apply(arrowTipOnGrid);
-
-        Vector towardsArrowTip = arrowTipOnScreen.subtract(screenPosition);
+        // TODO: WE NEED TO CONVERT THIS INTO A ROTATION OF THE VECTORS FROM THE FUNCTION
+        Vector towardsArrowTip = Vector.fromArray(new double[]{Math.cos(this.direction + Math.PI / 2), -Math.sin(this.direction + Math.PI / 2)});
         towardsArrowTip = towardsArrowTip.multiply(CIRCLE_RADIUS / (towardsArrowTip.norm() * 1.1));
 
         Vector towardsArrowLeft = Vector.fromArray(new double[]{towardsArrowTip.get(1), -towardsArrowTip.get(0)});
@@ -93,21 +78,11 @@ public class DirectedAmoebotParticle extends AmoebotParticle implements SpinCapa
             new Line2D.Double(arrowRight.get(0), arrowRight.get(1), arrowTip.get(0), arrowTip.get(1)),
         };
 
-        //graphics.setColor(this == chosenOne ? Color.BLUE : Color.RED);
-        graphics.setColor(ARROW_COLOR);
-        graphics.setStroke(ARROW_STROKE);
+        graphics.setColor(this == chosenOne ? Color.BLUE : Color.RED);
         Arrays.stream(lines).forEach(graphics::draw);
 
         //graphics.setColor(Color.BLACK);
         //graphics.drawString(((ToroidalAmoebotGrid) this.grid).getParticleLevel(this).toString(), (int) screenPosition.get(0), (int) screenPosition.get(1));
-    }
-
-    @Override
-    public ParticleGrid.Direction getWrappedNormalRandomDirection(ParticleGrid.Direction mean, double standardDeviation) {
-        // Default range is -Pi to Pi. Let's switch that to our range of [-3, 3].
-        double sample = Utils.randomWrappedNorm(standardDeviation) * 3 / (Math.PI);
-        int steps = (int) Math.round(sample);
-        return this.compass.shiftDirectionCounterclockwise(mean, steps);
     }
 
     @Override

@@ -18,6 +18,7 @@
 
 package com.cemgokmen.particles.models.amoebot.gridshapes;
 
+import com.cemgokmen.particles.graphics.GridGraphics;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.util.VectorWrapper;
 import com.google.common.collect.Maps;
@@ -25,17 +26,20 @@ import org.la4j.Vector;
 
 import java.util.Map;
 
-public class ToroidalAmoebotGrid extends QuadrilateralAmoebotGrid {
+public class CircularAmoebotGrid extends LinearAmoebotGrid {
     private Map<Particle, Vector> levels = Maps.newHashMap();
-    public ToroidalAmoebotGrid(int sideHalfLength) {
-        super(sideHalfLength);
+    private Vector wrapVector;
+
+    public CircularAmoebotGrid(int halfLength) {
+        super(halfLength);
+        this.wrapVector = Vector.fromArray(new double[]{1, halfLength});
     }
 
     @Override
     public Vector getPositionInDirection(Vector p, Direction d) {
         Vector newPos = super.getPositionInDirection(p, d);
 
-        return VectorWrapper.wrapVector(newPos, this.getSideHalfLength());
+        return VectorWrapper.wrapVector(newPos, this.wrapVector);
     }
 
     @Override
@@ -111,7 +115,7 @@ public class ToroidalAmoebotGrid extends QuadrilateralAmoebotGrid {
         Vector position = this.getParticlePosition(p);
         Vector level = this.getParticleLevel(p);
 
-        return VectorWrapper.unwrapVector(position, this.getSideHalfLength(), level);
+        return VectorWrapper.unwrapVector(position, this.wrapVector, level);
     }
 
     @Override
@@ -120,5 +124,15 @@ public class ToroidalAmoebotGrid extends QuadrilateralAmoebotGrid {
                 .map(this::getLeveledParticlePosition)
                 .reduce(Vector.zero(2), Vector::add)
                 .divide(this.getParticleCount());
+    }
+
+    @Override
+    public Vector getUnitPixelCoordinates(Vector in) {
+        double theta = 2 * Math.PI / (2 * this.getHalfLength() + 1);
+        int chordCount = 2 * this.getHalfLength() + 1;
+
+        double r = 1 / (2 * Math.sin(Math.PI / chordCount)); // Radius of the circumcircle
+
+        return Vector.fromArray(new double[]{r * Math.cos(theta * in.get(1)), r * Math.sin(theta * in.get(1))});
     }
 }

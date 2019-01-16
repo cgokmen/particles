@@ -16,10 +16,18 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.util;
 
-public class InvalidMoveException extends RuntimeException {
-    public InvalidMoveException(String type) {
-        super(type);
+import org.junit.Test;
+
+import static org.junit.Assert.*;
+
+public class UtilsTest {
+
+    @Test
+    public void randomWrappedNorm() {
+        for (int i = 0; i < 1000; i++) {
+            System.out.println(Utils.randomWrappedNorm(1.3));
+        }
     }
 }

@@ -16,10 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.capabilities;
 
-public class InvalidMoveException extends RuntimeException {
-    public InvalidMoveException(String type) {
-        super(type);
-    }
+public interface ParticleCapability {
 }

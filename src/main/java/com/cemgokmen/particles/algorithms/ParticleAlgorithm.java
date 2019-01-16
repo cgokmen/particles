@@ -18,16 +18,35 @@
 
 package com.cemgokmen.particles.algorithms;
 
+import com.cemgokmen.particles.capabilities.ParticleCapability;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
+import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
+import com.cemgokmen.particles.models.amoebot.specializedparticles.DirectedAmoebotParticle;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public abstract class ParticleAlgorithm {
+    public static final List<Class<? extends ParticleAlgorithm>> IMPLEMENTATIONS = ImmutableList.of(
+            CompressionAlgorithm.class,
+            SeparationAlgorithm.class,
+            ForagingAlgorithm.class,
+            AlignmentAlgorithm.class
+            //ContinuousAlignmentAlgorithm.class,
+            //BobBotAlignmentAlgorithm.class
+            );
+
     public abstract void onParticleActivation(Particle p);
 
-    public abstract boolean isParticleAllowed(Particle p);
+    public boolean isParticleAllowed(Particle p) {
+        return this.getRequiredCapabilities().stream().allMatch(req -> req.isInstance(p));
+    }
+
+    public abstract List<Class<? extends ParticleCapability>> getRequiredCapabilities();
 
     public abstract boolean isGridValid(ParticleGrid grid);
 

@@ -18,21 +18,22 @@
 
 package com.cemgokmen.particles.models.amoebot;
 
+import com.cemgokmen.particles.capabilities.MovementCapable;
+import com.cemgokmen.particles.capabilities.NeighborDetectionCapable;
+import com.cemgokmen.particles.capabilities.UniformRandomDirectionCapable;
+import com.cemgokmen.particles.capabilities.SwapMovementCapable;
 import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
-import com.google.common.collect.ImmutableList;
 import org.la4j.Vector;
 
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
-public class AmoebotParticle extends Particle {
-    // The capabilities of the model are implemented here.
-    public final ImmutableList<Class<? extends ParticleGrid>> COMPATIBLE_GRIDS = new ImmutableList.Builder<Class<? extends ParticleGrid>>().add(AmoebotGrid.class).build();
-
+public class AmoebotParticle extends Particle implements UniformRandomDirectionCapable, MovementCapable, SwapMovementCapable, NeighborDetectionCapable {
     public List<Particle> getNeighborParticles(boolean includeNulls, Predicate<Particle> filter) {
         if (filter == null) {
             return this.grid.getParticleNeighbors(this, includeNulls);
@@ -47,6 +48,13 @@ public class AmoebotParticle extends Particle {
             return this.grid.getPositionNeighbors(adjacentPosition, includeNulls);
         }
         return this.grid.getPositionNeighbors(adjacentPosition, filter, includeNulls);
+    }
+
+    @Override
+    public boolean isDirectionInBounds(ParticleGrid.Direction d) {
+        Vector curPos = this.grid.getParticlePosition(this);
+        Vector inDirection = this.grid.getPositionInDirection(curPos, d);
+        return this.grid.isPositionValid(inDirection, this);
     }
 
     public Particle getNeighborInDirection(ParticleGrid.Direction d, int counterclockwiseShift, Predicate<Particle> filter) {
@@ -70,46 +78,62 @@ public class AmoebotParticle extends Particle {
         return (filter == null || filter.test(neighbor)) ? neighbor : null;
     }
 
-    public ParticleGrid.Direction getRandomDirection() {
+    public ParticleGrid.Direction getUniformRandomDirection() {
         List<ParticleGrid.Direction> directions = this.grid.getCompass().getDirections();
         return directions.get(Utils.randomInt(directions.size()));
     }
 
-    public void move(ParticleGrid.Direction inDirection, boolean swapsAllowed, boolean nonSwapsAllowed) throws Exception {
+    public void move(ParticleGrid.Direction inDirection) {
         Vector current = this.grid.getParticlePosition(this);
         Vector target = this.grid.getPositionInDirection(current, inDirection);
 
         //System.out.printf("Moving particle of color %d from %s to %s\n", ((SeparableAmoebotParticle)this).getClassNumber(), current, target);
 
         Particle atTarget = this.grid.getParticleAtPosition(target);
-        if (atTarget == null) {
-            if (!nonSwapsAllowed) {
-                throw new InvalidMoveException("nonswap");
+        try {
+            if (atTarget == null) {
+                // Make the move
+                this.grid.moveParticle(this, target);
+            } else {
+                throw new InvalidMoveException("Position is occupied.");
             }
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
+        }
+    }
 
-            // Make the move
-            this.grid.moveParticle(this, target);
-        } else {
-            if (!swapsAllowed) {
-                throw new InvalidMoveException("swap");
+    public void swapMove(ParticleGrid.Direction inDirection) {
+        Vector current = this.grid.getParticlePosition(this);
+        Vector target = this.grid.getPositionInDirection(current, inDirection);
+
+        //System.out.printf("Moving particle of color %d from %s to %s\n", ((SeparableAmoebotParticle)this).getClassNumber(), current, target);
+
+        Particle atTarget = this.grid.getParticleAtPosition(target);
+        try {
+            if (atTarget == null) {
+                // Make the move
+                this.grid.moveParticle(this, target);
+            } else {
+                if (!this.getClass().equals(atTarget.getClass())) {
+                    throw new InvalidMoveException("swap between different types");
+                }
+
+                // Remove the occupying particle
+                this.grid.removeParticle(atTarget);
+
+                // Move there
+                this.grid.moveParticle(this, target);
+
+                // Add occupying particle
+                this.grid.addParticle(atTarget, current);
             }
-            if (!this.getClass().equals(atTarget.getClass())) {
-                throw new InvalidMoveException("swap between different types");
-            }
-
-            // Remove the occupying particle
-            this.grid.removeParticle(atTarget);
-
-            // Move there
-            this.grid.moveParticle(this, target);
-
-            // Add occupying particle
-            this.grid.addParticle(atTarget, current);
+        } catch (Exception e) {
+            throw new RuntimeException(e.getMessage());
         }
     }
 
     public boolean isDirectionWithinBounds(ParticleGrid.Direction d) {
-        return this.grid.isPositionValid(this.grid.getPositionInDirection(this.grid.getParticlePosition(this), d));
+        return this.grid.isPositionValid(this.grid.getPositionInDirection(this.grid.getParticlePosition(this), d), this);
     }
 
     public static final int CIRCLE_RADIUS = 12;
@@ -126,7 +150,7 @@ public class AmoebotParticle extends Particle {
     }
 
     @Override
-    public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength) {
+    public void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength, Function<Vector, Vector> gridToScreenCoords) {
         graphics.setColor(CIRCLE_STROKE_COLOR);
         graphics.setPaint(this.getCircleFillColor());
         graphics.setStroke(CIRCLE_STROKE);

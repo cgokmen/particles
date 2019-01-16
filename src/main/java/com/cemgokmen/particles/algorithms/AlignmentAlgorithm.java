@@ -18,22 +18,26 @@
 
 package com.cemgokmen.particles.algorithms;
 
-import com.cemgokmen.particles.util.RandomSelector;
+import com.cemgokmen.particles.capabilities.*;
 import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
-import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
 import com.cemgokmen.particles.models.amoebot.specializedparticles.DirectedAmoebotParticle;
+import com.google.common.collect.ImmutableList;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 
 import java.util.List;
 
-public class AlignmentAlgorithm extends CompressionAlgorithm {
+public class AlignmentAlgorithm extends ParticleAlgorithm {
     public static final double DEFAULT_ROTATION_BIAS = 20.0;
     public static final double DEFAULT_TRANSLATION_BIAS = 1.0;
     public static final double DEFAULT_FORWARD_BIAS = 1.1;
+    public static final double DEFAULT_LAMBDA = 4.0;
+
+    public static final List<Class<? extends ParticleCapability>> requiredCapabilities = ImmutableList.of(
+            MovementCapable.class, NeighborDetectionCapable.class, UniformRandomDirectionCapable.class, SpinCapable.class, WrappedNormalRandomDirectionCapable.class);
 
     protected final DoubleProperty rotationBias = new SimpleDoubleProperty();
     protected final DoubleProperty translationBias = new SimpleDoubleProperty();
@@ -87,62 +91,61 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
 
     @Override
     public void onParticleActivation(Particle p) {
-        if (!(p instanceof DirectedAmoebotParticle)) {
-            throw new RuntimeException("This particle type is not compatible with AlignmentAlgorithm.");
-        }
+        double spinProbability = 0.1;
 
-        DirectedAmoebotParticle particle = (DirectedAmoebotParticle) p;
+        // Check if we're about to hit the wall
+        /* ParticleGrid.Direction faceDir = ((SpinCapable) p).getDirection();
+        if (!((NeighborDetectionCapable) p).isDirectionInBounds(faceDir)) {
+            spinProbability = 0.5;
+        } */
 
-        if (Utils.randomDouble() <= 0.5) {
+        if (Utils.randomDouble() <= spinProbability) {
             // With one half probability, we rotate
-            ParticleGrid.Direction randomDirection = particle.getRandomDirection();
+            ParticleGrid.Direction randomDirection = ((UniformRandomDirectionCapable) p).getUniformRandomDirection();
 
-            double moveProbability = this.getRotateMoveProbability(particle, randomDirection);
+            double moveProbability = this.getRotateMoveProbability(p, randomDirection);
             if (Utils.randomDouble() > moveProbability) {
                 return;
             }
 
-            particle.setDirection(randomDirection);
+            ((SpinCapable) p).setDirection(randomDirection);
         } else {
             // With the rest probability, we translate
 
             // Pick a random direction using the correct weights
-            RandomSelector<ParticleGrid.Direction> selector = RandomSelector.weighted(particle.compass.getDirections(), direction -> {
-                double angle = particle.compass.getAngleBetweenDirections(direction, particle.getDirection());
-                return Math.pow(this.getForwardBias(), normalizeDotProduct(Math.cos(angle)));
-            });
-
-            ParticleGrid.Direction randomDirection = selector.next(Utils.random);
+            ParticleGrid.Direction currentDirection = ((SpinCapable) p).getDirection();
+            ParticleGrid.Direction randomDirection = ((WrappedNormalRandomDirectionCapable) p).getWrappedNormalRandomDirection(currentDirection, this.getForwardBias());
 
             // Run move validation
-            if (!this.isMoveValid(particle, randomDirection)) {
+            if (!((MovementCapable) p).isDirectionWithinBounds(randomDirection)) {
                 return;
             }
 
-            double moveProbability = this.getTranslateMoveProbability(particle, randomDirection);
+            /*if (false && !RuleUtils.isMoveValidCompressionMove(particle, randomDirection, false, true)) {
+                return;
+            }*/
+
+            double moveProbability = this.getTranslateMoveProbability(p, randomDirection);
             if (Utils.randomDouble() > moveProbability) {
                 return;
             }
 
             // Now make the move
             try {
-                particle.move(randomDirection, this.isSwapsAllowed(), this.isNonSwapsAllowed());
-                //System.out.println("Moved.");
-            } catch (Exception ignored) {
-
-            }
+                ((MovementCapable) p).move(randomDirection);
+            } catch (Exception ignored){}
         }
     }
 
     @Override
-    public boolean isParticleAllowed(Particle p) {
-        return p instanceof DirectedAmoebotParticle;
+    public List<Class<? extends ParticleCapability>> getRequiredCapabilities() {
+        return requiredCapabilities;
     }
 
-    private double getRotateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
-        List<Particle> neighbors = p.getNeighborParticles(false, null);
+    private double getRotateMoveProbability(Particle p, ParticleGrid.Direction inDirection) {
+        List<Particle> neighbors = ((NeighborDetectionCapable) p).getNeighborParticles(false, null);
 
-        double sumDotProducts = getDotProductSum(neighbors, p.getDirection());
+        double sumDotProducts = getDotProductSum(neighbors, ((SpinCapable) p).getDirection());
         double newSumDotProducts = getDotProductSum(neighbors, inDirection);
 
         return Math.pow(this.getRotationBias(), newSumDotProducts - sumDotProducts);
@@ -152,40 +155,34 @@ public class AlignmentAlgorithm extends CompressionAlgorithm {
         double sumDotProducts = 0;
 
         for (Particle nbrAnonymous : particles) {
-            DirectedAmoebotParticle nbr = (DirectedAmoebotParticle) nbrAnonymous;
-            sumDotProducts += normalizeDotProduct(Math.cos(nbr.compass.getAngleBetweenDirections(withDirection, nbr.getDirection())));
+            SpinCapable nbr = (SpinCapable) nbrAnonymous;
+            sumDotProducts += normalizeDotProduct(Math.cos(nbr.getCompass().getAngleBetweenDirections(withDirection, nbr.getDirection())));
         }
 
         return sumDotProducts;
     }
 
-    private double getTranslateMoveProbability(DirectedAmoebotParticle p, ParticleGrid.Direction inDirection) {
-        AmoebotGrid.AmoebotCompass compass = (AmoebotGrid.AmoebotCompass) p.compass;
-        ParticleGrid.Direction particleDirection = p.getDirection();
+    private double getTranslateMoveProbability(Particle p, ParticleGrid.Direction inDirection) {
+        ParticleGrid.Direction particleDirection = ((SpinCapable) p).getDirection();
 
-        List<Particle> currentNeighbors = p.getNeighborParticles(false, null);
-        List<Particle> futureNeighbors = p.getAdjacentPositionNeighborParticles(inDirection, false, particle -> particle
+        List<Particle> currentNeighbors = ((NeighborDetectionCapable) p).getNeighborParticles(false, null);
+        List<Particle> futureNeighbors = ((NeighborDetectionCapable) p).getAdjacentPositionNeighborParticles(inDirection, false, particle -> particle
                 != p);
 
         double translationBiasTerm = Math.pow(this.getTranslationBias(), futureNeighbors.size() - currentNeighbors.size());
 
-        double rotationBiasExponent = getDotProductSum(futureNeighbors, p.getDirection()) - getDotProductSum(currentNeighbors, p.getDirection());
+        double rotationBiasExponent = getDotProductSum(futureNeighbors, ((SpinCapable) p).getDirection()) - getDotProductSum(currentNeighbors, ((SpinCapable) p).getDirection());
         double rotationBiasTerm = Math.pow(this.getRotationBias(), rotationBiasExponent);
 
         return translationBiasTerm * rotationBiasTerm;
     }
 
-    @Override
-    public double getCompressionBias(Particle p) {
-        throw new RuntimeException("getCompressionBias method should not be used in AlignmentAlgorithm.");
-    }
-
-    @Override
-    public double getMoveProbability(AmoebotParticle p, ParticleGrid.Direction inDirection) {
-        throw new RuntimeException("getMoveProbability method should not be used in AlignmentAlgorithm.");
-    }
-
     private static double normalizeDotProduct(double dot) {
         return (dot + 1) / 2.0;
+    }
+
+    @Override
+    public boolean isGridValid(ParticleGrid grid) {
+        return true;
     }
 }

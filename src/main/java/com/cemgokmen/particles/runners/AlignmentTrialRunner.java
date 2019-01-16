@@ -48,10 +48,11 @@ public class AlignmentTrialRunner {
         protected final DoubleProperty translationBias = new SimpleDoubleProperty();
         protected final DoubleProperty forwardBias = new SimpleDoubleProperty();
         */
-        Path basePath = Paths.get("/Users/cgokmen/research/results/newalignmenttests/");
+        Path basePath = Paths.get("/Users/cgokmen/research/results/thesis-alignment/");
 
         ImmutableMap<String, List<Number>> propertyValues = new ImmutableMap.Builder<String, List<Number>>()
-                .put("rotationBias", new ImmutableList.Builder<Number>().add(1.0, 5.0, 10.0, 20.0, 50.0).build())
+                .put("rotationBias", new ImmutableList.Builder<Number>().add(20.0).build())
+                //.put("rotationBias", new ImmutableList.Builder<Number>().add(1.0, 5.0, 10.0, 20.0, 50.0).build())
                 //.put("forwardBias", new ImmutableList.Builder<Number>().add(1.0, 1.1, 2.0, 5.0, 10.0).build())
                 .build();
 
@@ -77,7 +78,7 @@ public class AlignmentTrialRunner {
             final String propertyName = entry.getKey();
             final Path propertyPath = basePath.resolve(propertyName);
 
-            final Table<Number, Number, File> images = TrialUtils.runPropertyValueTrials(gridSupplier, algorithmSupplier, propertyName, entry.getValue(), stopArray, propertyPath, "png");
+            final Table<Number, Number, File> images = TrialUtils.runPropertyValueTrials(gridSupplier, algorithmSupplier, propertyName, entry.getValue(), stopArray, propertyPath, "pdf");
 
             File htmlFile = propertyPath.resolve("index.html").toFile();
             HTMLGenerator.saveHTML(htmlFile, "Alignment", propertyName, "Activations", images);

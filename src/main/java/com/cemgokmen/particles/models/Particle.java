@@ -19,15 +19,13 @@
 package com.cemgokmen.particles.models;
 
 import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
-import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
 import com.google.common.collect.ImmutableList;
 import org.la4j.Vector;
 
 import java.awt.*;
+import java.util.function.Function;
 
 public abstract class Particle {
-    public final ImmutableList<Class<? extends ParticleGrid>> COMPATIBLE_GRIDS = new ImmutableList.Builder<Class<? extends ParticleGrid>>().add(ParticleGrid.class).build();
-
     protected ParticleGrid grid;
     protected ParticleAlgorithm algorithm;
 
@@ -35,8 +33,14 @@ public abstract class Particle {
         this.grid = grid;
     }
 
+    public ParticleGrid getGrid() { return this.grid; }
+
     public ParticleAlgorithm getAlgorithm() {
         return this.algorithm;
+    }
+
+    public boolean shouldDrawEdges() {
+        return true;
     }
 
     public void setAlgorithm(ParticleAlgorithm algorithm) {
@@ -52,5 +56,5 @@ public abstract class Particle {
         }
     }
 
-    public abstract void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength);
+    public abstract void drawParticle(Graphics2D graphics, Vector screenPosition, int edgeLength, Function<Vector, Vector> gridToScreenCoords);
 }

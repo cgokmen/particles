@@ -18,16 +18,17 @@
 
 package com.cemgokmen.particles.models.amoebot.gridshapes;
 
+import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.storage.BiMapParticleStorage;
 import com.cemgokmen.particles.storage.ParticleStorage;
-import com.cemgokmen.particles.storage.TableParticleStorage;
 import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
 import com.google.common.collect.Lists;
 import org.la4j.Vector;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class HexagonalAmoebotGrid extends AmoebotGrid {
     private final int radius;
@@ -48,7 +49,7 @@ public class HexagonalAmoebotGrid extends AmoebotGrid {
     }
 
     @Override
-    public boolean isPositionValid(Vector p) {
+    public boolean isPositionValid(Vector p, Particle forParticle) {
         if (p.length() != 2) {
             return false;
         }
@@ -58,18 +59,13 @@ public class HexagonalAmoebotGrid extends AmoebotGrid {
     }
 
     @Override
-    public List<Vector> getValidPositions() {
-        List<Vector> vectors = new ArrayList<>();
-
-        for (int dx = -this.radius; dx <= this.radius; dx++) {
-            for (int dy = Math.max(-this.radius, -dx - this.radius);
-                 dy <= Math.min(this.radius, -dx + this.radius); dy++) {
+    public Stream<Vector> getValidPositions() {
+        return IntStream.rangeClosed(-this.radius, this.radius).boxed().flatMap(dx-> {
+            return IntStream.rangeClosed(-this.radius, this.radius).mapToObj(dy -> {
                 int dz = -dx - dy;
-                vectors.add(Utils.getVector(dx, dz));
-            }
-        }
-
-        return vectors;
+                return Vector.fromArray(new double[]{dx, dz});
+            });
+        });
     }
 
     @Override

@@ -18,7 +18,6 @@
 
 package com.cemgokmen.particles.runners;
 
-import com.cemgokmen.particles.algorithms.CompressionAlgorithm;
 import com.cemgokmen.particles.algorithms.SeparationAlgorithm;
 import com.cemgokmen.particles.graphics.GridGraphics;
 import com.cemgokmen.particles.io.GridIO;

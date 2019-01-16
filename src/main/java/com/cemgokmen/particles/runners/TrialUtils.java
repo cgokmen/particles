@@ -49,7 +49,7 @@ public class TrialUtils {
 
             System.out.printf("    Next target: %d\n", target);
             grid.runActivations(toRun);
-            File image = targetPath.resolve(grid.getActivationsRun() + "." + imageExt).toFile();
+            File image = targetPath.resolve(String.format("%09d.%s", grid.getActivationsRun(), imageExt)).toFile();
             GridGraphics.saveGridImage(grid, image);
             images.put(grid.getActivationsRun(), image);
             System.out.printf("    Saved target: %d\n\n", target);

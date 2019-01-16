@@ -19,56 +19,46 @@
 package com.cemgokmen.particles.runners;
 
 import com.cemgokmen.particles.algorithms.AlignmentAlgorithm;
-import com.cemgokmen.particles.algorithms.ParticleAlgorithm;
 import com.cemgokmen.particles.generators.RandomSystemGenerator;
-import com.cemgokmen.particles.io.GridIO;
-import com.cemgokmen.particles.io.SampleSystemMetadata;
-import com.cemgokmen.particles.io.html.HTMLGenerator;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
-import com.cemgokmen.particles.models.amoebot.AmoebotGrid;
-import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
-import com.cemgokmen.particles.models.amoebot.gridshapes.QuadrilateralAmoebotGrid;
 import com.cemgokmen.particles.models.amoebot.gridshapes.ToroidalAmoebotGrid;
 import com.cemgokmen.particles.models.amoebot.specializedparticles.DirectedAmoebotParticle;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Table;
+import com.cemgokmen.particles.models.continuous.ContinuousParticle;
+import com.cemgokmen.particles.models.continuous.ContinuousParticleGrid;
+import com.cemgokmen.particles.models.continuous.boundary.CircularBoundary;
+import com.cemgokmen.particles.models.continuous.boundary.ContinuousParticleGridBoundary;
+import com.cemgokmen.particles.util.Utils;
 
-import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
-public class GeneratedGridTrialRunner {
+public class GeneratedContinuousGridTrialRunner {
     private static final int PARTICLE_COUNT = 10000;
     private static final int GRID_SIZE = 2 * (int) Math.sqrt(PARTICLE_COUNT);
-    private static final Path basePath = Paths.get("/Users/cgokmen/research/results/thesis-alignment-random-4/");
+    private static final Path basePath = Paths.get("/Users/cgokmen/research/results/continuous-10-8--2/");
 
     public static void main(String[] args) throws Exception {
-        ToroidalAmoebotGrid grid = new ToroidalAmoebotGrid(15);
-        final ParticleGrid.Compass compass = grid.getCompass();
+        ContinuousParticleGridBoundary boundary = new CircularBoundary(30);
+        ContinuousParticleGrid grid = new ContinuousParticleGrid(boundary);
 
-        AlignmentAlgorithm algorithm = new AlignmentAlgorithm(20, 1, 1.1);
+        AlignmentAlgorithm algorithm = new AlignmentAlgorithm(4, 1, 0.5);
 
-        List<Supplier<Particle>> directedParticleSuppliers = compass.getDirections().stream().map(d -> {
-            return (Supplier<Particle>) () -> {
-                DirectedAmoebotParticle p = new DirectedAmoebotParticle(compass, d, false);
-                p.setAlgorithm(algorithm);
-                return p;
-            };
-        }).collect(Collectors.toList());
-        RandomSystemGenerator.addUniformWeightedParticles(grid, directedParticleSuppliers, 50);
+        Stream<Particle> randomlyDirectedParticles = Utils.random.doubles().mapToObj(d -> new ContinuousParticle(0.5, d * Math.PI * 2));
+
+        ContinuousParticleGridBoundary smallerBoundary = new CircularBoundary(15);
+        RandomSystemGenerator.addParticles(grid, randomlyDirectedParticles, v -> smallerBoundary.isVectorInBoundary(v, 0.5), 100);
 
         grid.assignAllParticlesAlgorithm(algorithm);
 
-        int iterations = 1000000;
+        int iterations = 20000000;
         int seconds = 20;
-        int fps = 1; //24;
+        int fps = 24;
 
         int frames = seconds * fps;
         int step = iterations / frames;

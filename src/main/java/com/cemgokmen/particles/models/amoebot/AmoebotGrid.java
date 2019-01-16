@@ -18,18 +18,16 @@
 
 package com.cemgokmen.particles.models.amoebot;
 
-import com.cemgokmen.particles.algorithms.*;
 import com.cemgokmen.particles.util.Utils;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import org.la4j.Matrix;
 import org.la4j.Vector;
 import org.la4j.matrix.dense.Basic2DMatrix;
 
 import java.util.HashMap;
-import java.util.List;
+import java.util.stream.Stream;
 
 public abstract class AmoebotGrid extends ParticleGrid {
     public static class AmoebotCompass extends Compass {
@@ -40,7 +38,7 @@ public abstract class AmoebotGrid extends ParticleGrid {
         private static final Direction SW = new Direction(Utils.getVector(-1, 1));
         private static final Direction S = new Direction(Utils.getVector(0, 1));
 
-        private static final Direction[] directions = {SE, NE, N, NW, SW, S};
+        private static final Direction[] directions = {N, NW, SW, S, SE, NE};
         private final HashMap<Direction, Integer> directionOrder;
 
         public AmoebotCompass() {
@@ -56,9 +54,9 @@ public abstract class AmoebotGrid extends ParticleGrid {
         }
 
         @Override
-        public Direction shiftDirectionCounterclockwise(Direction d, int times) {
+        public Direction shiftDirectionCounterclockwise(Direction d, double times) {
             int index = this.directionOrder.get(d);
-            return directions[Math.floorMod(index + times, directions.length)];
+            return directions[Math.floorMod(index + (int) times, directions.length)];
         }
 
         public int getMinorArcLength(Direction a, Direction b) {
@@ -92,16 +90,6 @@ public abstract class AmoebotGrid extends ParticleGrid {
         return p instanceof AmoebotParticle;
     }
 
-    @Override
-    public List<Class<? extends ParticleAlgorithm>> getCompatibleAlgorithms() {
-        return Lists.newArrayList(
-            CompressionAlgorithm.class,
-            SeparationAlgorithm.class,
-            AlignmentAlgorithm.class,
-            ForagingAlgorithm.class
-        );
-    }
-
     private static final Matrix axialToPixel = new Basic2DMatrix(new double[][]{
             {3.0 / 2.0, 0.0},
             {Math.sqrt(3) / 2.0, Math.sqrt(3)}
@@ -109,6 +97,17 @@ public abstract class AmoebotGrid extends ParticleGrid {
 
     @Override
     public Vector getUnitPixelCoordinates(Vector in) {
+        return convertAxialToCartesian(in);
+    }
+
+    public static Vector convertAxialToCartesian(Vector in) {
         return axialToPixel.multiply(in);
+    }
+
+    @Override
+    public Vector getRandomPosition(Particle particle) {
+        int cnt = (int) this.getValidPositions().count();
+        long idx = Utils.random.nextInt(cnt - 1);
+        return this.getValidPositions().skip(idx).findFirst().get();
     }
 }

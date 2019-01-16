@@ -19,13 +19,26 @@
 package com.cemgokmen.particles.io;
 
 import com.cemgokmen.particles.models.ParticleGrid;
-import com.cemgokmen.particles.models.amoebot.gridshapes.HexagonalAmoebotGrid;
-import com.cemgokmen.particles.models.amoebot.gridshapes.QuadrilateralAmoebotGrid;
-import com.cemgokmen.particles.models.amoebot.gridshapes.ToroidalAmoebotGrid;
+import com.cemgokmen.particles.models.amoebot.gridshapes.*;
+import com.cemgokmen.particles.models.continuous.ContinuousParticleGrid;
+import com.cemgokmen.particles.models.continuous.boundary.CircularBoundary;
+import com.google.common.collect.ImmutableMap;
 
 import java.util.Scanner;
+import java.util.function.Function;
 
 public class GridLoaders {
+    protected static final ImmutableMap<Class<? extends ParticleGrid>, Function<Scanner, ParticleGrid>> GRID_LOADER_MAP =
+            new ImmutableMap.Builder<Class<? extends ParticleGrid>, Function<Scanner, ParticleGrid>>()
+                    .put(HexagonalAmoebotGrid.class, GridLoaders::loadHexagonalAmoebotGrid)
+                    .put(QuadrilateralAmoebotGrid.class, GridLoaders::loadQuadrilateralAmoebotGrid)
+                    .put(ToroidalAmoebotGrid.class, GridLoaders::loadToroidalAmoebotGrid)
+                    .put(LinearAmoebotGrid.class, GridLoaders::loadLinearAmoebotGrid)
+                    .put(CircularAmoebotGrid.class, GridLoaders::loadCircularAmoebotGrid)
+                    .put(ContinuousParticleGrid.class, GridLoaders::loadContinuousGrid)
+                    .build();
+
+
     static ParticleGrid loadHexagonalAmoebotGrid(Scanner input) {
         int radius = input.nextInt();
 
@@ -42,5 +55,25 @@ public class GridLoaders {
         int sideHalfLength = input.nextInt();
 
         return new ToroidalAmoebotGrid(sideHalfLength);
+    }
+
+    static ParticleGrid loadLinearAmoebotGrid(Scanner input) {
+        int halfLength = input.nextInt();
+
+        return new LinearAmoebotGrid(halfLength);
+    }
+
+    static ParticleGrid loadCircularAmoebotGrid(Scanner input) {
+        int halfLength = input.nextInt();
+
+        return new CircularAmoebotGrid(halfLength);
+    }
+
+    static ParticleGrid loadContinuousGrid(Scanner input) {
+        double boundaryRadius = input.nextDouble();
+
+        CircularBoundary boundary = new CircularBoundary(boundaryRadius);
+
+        return new ContinuousParticleGrid(boundary);
     }
 }

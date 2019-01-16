@@ -16,10 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.cemgokmen.particles.models.amoebot;
+package com.cemgokmen.particles.capabilities;
 
-public class InvalidMoveException extends RuntimeException {
-    public InvalidMoveException(String type) {
-        super(type);
-    }
+import com.cemgokmen.particles.models.Particle;
+import com.cemgokmen.particles.models.ParticleGrid;
+import org.la4j.Vector;
+
+import java.util.function.Predicate;
+
+public interface DirectedNeighborDetectionCapable extends ParticleCapability {
+    Particle getNeighborInDirection(ParticleGrid.Direction d, int counterclockwiseShift, Predicate<Particle> filter);
+    Particle getAdjacentPositionNeighborInDirection(ParticleGrid.Direction d, int counterclockwiseShift, Predicate<Particle> filter);
 }

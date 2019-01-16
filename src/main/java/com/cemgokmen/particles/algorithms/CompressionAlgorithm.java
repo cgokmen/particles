@@ -18,14 +18,23 @@
 
 package com.cemgokmen.particles.algorithms;
 
+import com.cemgokmen.particles.capabilities.MovementCapable;
+import com.cemgokmen.particles.capabilities.NeighborDetectionCapable;
+import com.cemgokmen.particles.capabilities.ParticleCapability;
+import com.cemgokmen.particles.capabilities.UniformRandomDirectionCapable;
 import com.cemgokmen.particles.models.Particle;
 import com.cemgokmen.particles.models.ParticleGrid;
 import com.cemgokmen.particles.models.amoebot.AmoebotParticle;
 import com.cemgokmen.particles.util.Utils;
+import com.google.common.collect.ImmutableList;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 
+import java.util.List;
+
 public class CompressionAlgorithm extends ParticleAlgorithm {
+    public static final List<Class<? extends ParticleCapability>> requiredCapabilities = ImmutableList.of(MovementCapable.class, UniformRandomDirectionCapable.class, NeighborDetectionCapable.class);
+
     public static final double DEFAULT_LAMBDA = 4.0;
 
     protected final DoubleProperty lambda = new SimpleDoubleProperty();
@@ -50,32 +59,26 @@ public class CompressionAlgorithm extends ParticleAlgorithm {
         this(DEFAULT_LAMBDA);
     }
 
-    public double getCompressionBias(Particle p) {
-        return this.getLambda();
-    }
-
     @Override
     public void onParticleActivation(Particle p) {
-        if (!(p instanceof AmoebotParticle)) {
-            throw new RuntimeException("This particle type is not compatible with CompressionAlgorithm.");
-        }
-
-        AmoebotParticle particle = (AmoebotParticle) p;
+        UniformRandomDirectionCapable particle = (UniformRandomDirectionCapable) p;
 
         // Pick a random direction
-        ParticleGrid.Direction randomDirection = particle.getRandomDirection();
+        ParticleGrid.Direction randomDirection = particle.getUniformRandomDirection();
 
         //System.out.println("Time for move validation");
 
         // Run move validation
-        if (!this.isMoveValid(particle, randomDirection)) {
-            //System.out.println("Invalid move, returning");
-            return;
+        if (p instanceof AmoebotParticle) {
+            if (!RuleUtils.isMoveValidCompressionMove((AmoebotParticle) particle, randomDirection, false, true)) {
+                //System.out.println("Invalid move, returning");
+                return;
+            }
         }
 
         //System.out.println("Time for probability calculation");
 
-        double moveProbability = this.getMoveProbability(particle, randomDirection);
+        double moveProbability = this.getMoveProbability((NeighborDetectionCapable) p, randomDirection);
 
         //System.out.printf("Move probability: %.2f%%. Now filtering.", moveProbability * 100);
 
@@ -87,24 +90,16 @@ public class CompressionAlgorithm extends ParticleAlgorithm {
 
         // Now make the move
         try {
-            particle.move(randomDirection, this.isSwapsAllowed(), this.isNonSwapsAllowed());
+            ((MovementCapable) particle).move(randomDirection);
             //System.out.println("Moved.");
         } catch (Exception ignored) {
 
         }
     }
 
-    public boolean isSwapsAllowed() {
-        return false;
-    }
-
-    public boolean isNonSwapsAllowed() {
-        return true;
-    }
-
     @Override
-    public boolean isParticleAllowed(Particle p) {
-        return p instanceof AmoebotParticle;
+    public List<Class<? extends ParticleCapability>> getRequiredCapabilities() {
+        return requiredCapabilities;
     }
 
     @Override
@@ -112,27 +107,10 @@ public class CompressionAlgorithm extends ParticleAlgorithm {
         return RuleUtils.checkParticleConnection(grid, particle -> true) && RuleUtils.checkParticleHoles(grid, particle -> true);
     }
 
-    public double getMoveProbability(AmoebotParticle p, ParticleGrid.Direction inDirection) {
+    public double getMoveProbability(NeighborDetectionCapable p, ParticleGrid.Direction inDirection) {
         int currentNeighbors = p.getNeighborParticles(false, null).size();
         int futureNeighbors = p.getAdjacentPositionNeighborParticles(inDirection, false, particle -> particle
                 != p).size();
-        return Math.pow(this.getCompressionBias(p), futureNeighbors - currentNeighbors);
+        return Math.pow(this.getLambda(), futureNeighbors - currentNeighbors);
     }
-
-    public boolean isMoveValid(AmoebotParticle p, ParticleGrid.Direction d) {
-        if (!p.isDirectionWithinBounds(d)) {
-            return false;
-        }
-        boolean isOccupied = p.getNeighborInDirection(d, 0, null) != null;
-        if ((isOccupied && !this.isSwapsAllowed()) || (!isOccupied && !this.isNonSwapsAllowed())) {
-            return false;
-        }
-
-        boolean cond1 = p.getNeighborParticles(false, null).size() < 5;
-        boolean cond2 = RuleUtils.checkProperty1(p, d, null);
-        boolean cond3 = RuleUtils.checkProperty2(p, d, null);
-
-        return cond1 && (cond2 || cond3);
-    }
-
 }
